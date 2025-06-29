@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Starzik The Szpil</title>
+<style>
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+}
+
+body {
+background: #111;
+color: #ddd;
+font-family: Georgia, serif;
+padding: 20px;
+min-height: 100vh;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+}
+
+h1 {
+color: #e0e0ff;
+margin-bottom: 20px;
+text-shadow: 0 0 10px rgba(200, 200, 255, 0.5);
+}
+
+.game-container {
+background: #000;
+border: 3px solid #333;
+border-radius: 10px;
+position: relative;
+box-shadow: 0 0 30px rgba(0,0,0,0.8);
+}
+
+canvas {
+display: block;
+border-radius: 7px;
+}
+
+.ui {
+position: absolute;
+bottom: 10px;
+left: 10px;
+font-size: 12px;
+color: #aaa;
+}
+
+.inventory {
+position: absolute;
+top: 10px;
+right: 10px;
+background: rgba(0,0,0,0.8);
+border: 1px solid #555;
+padding: 10px;
+border-radius: 5px;
+font-size: 12px;
+min-width: 120px;
+z-index: 998;
+display: none;
+}
+
+.inventory-grid {
+display: grid;
+grid-template-columns: repeat(3, 32px);
+gap: 4px;
+margin-top: 5px;
+}
+
+.inventory-slot {
+width: 32px;
+height: 32px;
+background: rgba(50,50,50,0.8);
+border: 1px solid #666;
+border-radius: 3px;
+display: flex;
+align-items: center;
+justify-content: center;
+cursor: pointer;
+font-size: 18px;
+color: #ddd;
+}
+
+.inventory-slot:hover {
+background: rgba(70,70,70,0.8);
+border-color: #888;
+}
+
+.inventory-slot.empty {
+opacity: 0.3;
+}
+
+.dialog {
+position: absolute;
+bottom: 60px;
+left: 20px;
+right: 20px;
+background: rgba(0,0,0,0.9);
+border: 2px solid #555;
+padding: 15px;
+border-radius: 8px;
+display: none;
+font-size: 14px;
+z-index: 999;
+}
+
+.dialog-option {
+background: rgba(100,100,100,0.3);
+border: 1px solid #666;
+padding: 6px 10px;
+margin: 3px 0;
+cursor: pointer;
+border-radius: 4px;
+transition: background 0.2s;
+}
+
+.dialog-option:hover {
+background: rgba(150,150,150,0.4);
+}
+
+.code-input {
+position: fixed;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+background: rgba(0,0,0,0.95);
+border: 3px solid #888;
+padding: 25px;
+border-radius: 10px;
+display: none;
+text-align: center;
+z-index: 10000;
+box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+.code-input input {
+padding: 8px;
+font-size: 16px;
+background: #333;
+color: #ddd;
+border: 1px solid #666;
+border-radius: 4px;
+text-align: center;
+width: 80px;
+margin: 10px;
+}
+
+.code-input button {
+padding: 8px 16px;
+margin: 5px;
+background: #555;
+color: #ddd;
+border: 1px solid #666;
+border-radius: 4px;
+cursor: pointer;
+}
+
+.code-input button:hover {
+background: #666;
+}
+
+.debug {
+margin-top: 20px;
+color: #666;
+font-size: 12px;
+}
+</style>
+</head>
+<body>
+<h1>🏚️ STARZIK: PREQUEL 🏚️</h1>
+<div class="game-container">
+<canvas id="canvas" width="800" height="600"></canvas>
+<div class="ui">
+Familock • Point & Click Adventure
+</div>
+<div class="inventory">
+<div><strong>Ekwipunek:</strong></div>
+<div class="inventory-grid" id="inventoryGrid">
+<div class="inventory-slot empty" data-slot="0"></div>
+<div class="inventory-slot empty" data-slot="1"></div>
+<div class="inventory-slot empty" data-slot="2"></div>
+<div class="inventory-slot empty" data-slot="3"></div>
+<div class="inventory-slot empty" data-slot="4"></div>
+<div class="inventory-slot empty" data-slot="5"></div>
+</div>
+</div>
+<div class="dialog" id="dialog"></div>
+<div class="code-input" id="codeInput">
+<h3>Wprowadź kod do kłódki:</h3>
+<input type="text" id="codeField" maxlength="4" placeholder="0000" onkeypress="if(event.key==='Enter') checkCode();">
+<br>
+<button onclick="checkCode()">Sprawdź</button>
+<button onclick="hideCodeInput()">Anuluj</button>
+</div>
+</div>
+<div class="debug" id="debug">
+Ładowanie gry...
+</div>
+</body>
+</html><!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Starzik The Szpil</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>🏚️ STARZIK: PREQUEL 🏚️</h1>
+<div class="game-container">
+<canvas id="canvas" width="800" height="600"></canvas>
+<div class="ui">
+Familock • Point & Click Adventure
+</div>
+<div class="inventory">
+<div><strong>Ekwipunek:</strong></div>
+<div class="inventory-grid" id="inventoryGrid">
+<div class="inventory-slot empty" data-slot="0"></div>
+<div class="inventory-slot empty" data-slot="1"></div>
+<div class="inventory-slot empty" data-slot="2"></div>
+<div class="inventory-slot empty" data-slot="3"></div>
+<div class="inventory-slot empty" data-slot="4"></div>
+<div class="inventory-slot empty" data-slot="5"></div>
+</div>
+</div>
+<div class="dialog" id="dialog"></div>
+<div class="code-input" id="codeInput">
+<h3>Wprowadź kod do kłódki:</h3>
+<input type="text" id="codeField" maxlength="4" placeholder="0000" onkeypress="if(event.key==='Enter') checkCode();">
+<br>
+<button onclick="checkCode()">Sprawdź</button>
+<button onclick="hideCodeInput()">Anuluj</button>
+</div>
+</div>
+<div class="debug" id="debug">
+Ładowanie gry...
+</div>
+<script src="game.js"></script>
+</body>
+</html>
