@@ -224,7 +224,7 @@ function showLetterContent() {
             <div style="border-top: 1px solid #ccc; padding-top: 10px;">
                 <p><strong>Szanowny Panie Józefie,</strong></p>
                 <p>Informujemy, że w związku z planowaną rozbiórką budynku przy ulicy Cmentarnej,
-                prosimo o opuszczenie lokalu do dnia 30 października 2013 roku.</p>
+                prosimo o opuszczenie lokalu do dnia 30. października 2013 roku.</p>
                 <p>Szczegóły dotyczące przeprowadzki znajdzie Pan w swoim mieszkaniu.</p>
                 <p style="margin-top: 15px;">
                     <em>Z poważaniem,<br>
@@ -362,8 +362,10 @@ class Scene {
   }
 }
 
+// Dodaj to do klasy MenuScene w konstruktorze:
+
 class MenuScene extends Scene {
-  constructor() {
+constructor() {
     super();
     this.animation = 0;
     this.backgroundMusic = new Audio("https://files.catbox.moe/ngqi9t.mp3");
@@ -371,10 +373,36 @@ class MenuScene extends Scene {
     this.backgroundMusic.volume = 0.3;
     this.musicStarted = false;
 
+    // NOWY SYSTEM DESZCZU
+    this.rainDrops = [];
+    this.initRain();
+
+    // SYSTEM BŁYSKAWIC
+    this.lightning = {
+      active: false,
+      intensity: 0,
+      timer: 0,
+      nextStrike: this.getRandomLightningTime(),
+      duration: 0,
+      branches: []
+    };
+
+    // NOWY SYSTEM KARTKI WPROWADZAJĄCEJ
+    this.introPaper = {
+      visible: false,
+      animation: 0,
+      maxAnimation: 60,
+      text: "Rok 2013, Świętochłowice...\nStarzik pakuje ostatnie rzeczy przed wyprowadzką.\n\nCo zostało w jego starym mieszkaniu?\nJakie tajemnice kryje budynek przy Cmentarnej?\n\nRozwiąż zagadkę i odkryj prawdę!",
+      scale: 0,
+      rotation: 0,
+      opacity: 0
+    };
+
     // Obszar kliknięcia na całe menu do uruchomienia muzyki
     this.addArea(0, 0, 800, 600, () => this.startMusic());
 
-    this.addArea(300, 300, 200, 50, () => changeScene("courtyard"));
+    // ZMIANA: Przycisk teraz pokazuje kartkę zamiast od razu iść do gry
+    this.addArea(300, 300, 200, 50, () => this.showIntroPaper());
     this.addArea(300, 370, 200, 50, () =>
       showDialog(
         "Krótka gra przygodowa - prequel escape roomu Familock w Świętochłowicach.",
@@ -385,6 +413,403 @@ class MenuScene extends Scene {
       showDialog("Przekierowywanie do Familock...", 2000);
       setTimeout(() => window.open("https://www.familock.pl", "_blank"), 1000);
     });
+  }
+
+  // NOWA METODA - pokazanie kartki wprowadzającej
+  showIntroPaper() {
+    this.introPaper.visible = true;
+    this.introPaper.animation = 0;
+    
+    // USUŃ WSZYSTKIE obszary kliknięcia przycisków
+    this.clickAreas = this.clickAreas.filter(area => {
+      // Zostaw tylko obszar muzyki (jeśli jest)
+      return (area.x === 0 && area.y === 0 && area.w === 800 && area.h === 600);
+    });
+    
+    // Dodaj nowy obszar kliknięcia na przycisk "DO GRY" (będzie widoczny po animacji)
+    setTimeout(() => {
+      // Przycisk na kartce jest w środku ekranu, więc współrzędne to:
+      // Środek ekranu (400) minus połowa szerokości przycisku (50) = 350
+      // Pozycja Y: 400 (środek kartki transformowanej)
+      this.addArea(350, 400, 100, 40, () => {
+        changeScene("courtyard");
+      });
+    }, 1000); // Czeka sekundę na zakończenie animacji
+  }
+
+  // NOWA METODA - aktualizacja animacji kartki
+  updateIntroPaper() {
+    if (!this.introPaper.visible) return;
+    
+    if (this.introPaper.animation < this.introPaper.maxAnimation) {
+      this.introPaper.animation++;
+      
+      // Easing function dla płynnej animacji
+      const progress = this.introPaper.animation / this.introPaper.maxAnimation;
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      
+      this.introPaper.scale = eased;
+      this.introPaper.opacity = eased;
+      this.introPaper.rotation = (1 - eased) * 0.3; // Lekka rotacja na początku
+    }
+  }
+
+  // NOWA METODA - rysowanie kartki wprowadzającej
+  drawIntroPaper() {
+    if (!this.introPaper.visible || this.introPaper.opacity <= 0) return;
+    
+    ctx.save();
+    
+    // Półprzezroczyste tło
+    ctx.globalAlpha = this.introPaper.opacity * 0.8;
+    ctx.fillStyle = 'rgba(20, 22, 34, 0.7)';
+    ctx.fillRect(0, 0, 800, 600);
+    
+    // Transformacje kartki
+    ctx.translate(400, 300); // Środek ekranu
+    ctx.rotate(this.introPaper.rotation);
+    ctx.scale(this.introPaper.scale, this.introPaper.scale);
+    ctx.globalAlpha = this.introPaper.opacity;
+    
+    // Cień kartki
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetX = 8;
+    ctx.shadowOffsetY = 8;
+    
+    // Tło kartki - stary papier
+    ctx.fillStyle = '#F5F1E8';
+    ctx.fillRect(-200, -150, 400, 300);
+    
+    // Obramowanie kartki
+    ctx.strokeStyle = '#D4C4A8';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-200, -150, 400, 300);
+    
+    // Plamy na papierze (efekt starzenia)
+    ctx.globalAlpha = this.introPaper.opacity * 0.3;
+    ctx.fillStyle = '#E8D4B0';
+    ctx.beginPath();
+    ctx.ellipse(-120, -80, 30, 15, 0.3, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(150, 100, 25, 12, -0.2, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(-80, 120, 20, 10, 0.5, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    ctx.globalAlpha = this.introPaper.opacity;
+    
+    // Reset cienia dla tekstu
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    
+    // Tytuł na kartce
+    ctx.fillStyle = '#2C1810';
+    ctx.font = 'bold 24px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('STARZIK: PREQUEL', 0, -100);
+    
+    // Linia pod tytułem
+    ctx.strokeStyle = '#8B4513';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-80, -85);
+    ctx.lineTo(80, -85);
+    ctx.stroke();
+    
+    // Tekst główny (podzielony na linie)
+    ctx.font = '14px serif';
+    ctx.fillStyle = '#2C1810';
+    ctx.textAlign = 'center';
+    
+    const lines = this.introPaper.text.split('\n');
+    lines.forEach((line, index) => {
+      ctx.fillText(line, 0, -50 + index * 20);
+    });
+    
+    // Przycisk "DO GRY" (pokazuje się po animacji)
+    if (this.introPaper.animation >= this.introPaper.maxAnimation) {
+      // Tło przycisku
+      ctx.fillStyle = '#B94E39'; // Ten sam kolor co Twój główny przycisk
+      ctx.fillRect(-50, 100, 100, 40);
+      
+      // Obramowanie przycisku
+      ctx.strokeStyle = '#6a6a8a';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-50, 100, 100, 40);
+      
+      // Tekst przycisku
+      ctx.fillStyle = '#e0e0e0';
+      ctx.font = 'bold 16px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('DO GRY', 0, 125);
+    }
+    
+    ctx.restore();
+  }
+
+  // NOWA METODA - losowy czas do następnej błyskawicy
+  getRandomLightningTime() {
+    return Math.random() * 300 + 180; // 3-8 sekund (przy 60 FPS)
+  }
+
+  // NOWA METODA - generowanie błyskawicy
+  createLightning() {
+    this.lightning.active = true;
+    this.lightning.intensity = 1;
+    this.lightning.duration = Math.random() * 20 + 10; // 10-30 klatek
+    this.lightning.branches = [];
+
+    // Główna gałąź błyskawicy
+    const startX = Math.random() * 800;
+    const startY = 0;
+    this.lightning.branches.push(
+      this.generateLightningBranch(startX, startY, 0, Math.random() * 400 + 200)
+    );
+
+    // Dodatkowe gałęzie (30% szans)
+    if (Math.random() < 0.3) {
+      const branchX = Math.random() * 800;
+      this.lightning.branches.push(
+        this.generateLightningBranch(branchX, 0, 0, Math.random() * 300 + 150)
+      );
+    }
+  }
+
+  // NOWA METODA - generowanie gałęzi błyskawicy
+  generateLightningBranch(startX, startY, startAngle, maxLength) {
+    const points = [{ x: startX, y: startY }];
+    let currentX = startX;
+    let currentY = startY;
+    let currentAngle = startAngle;
+    let remainingLength = maxLength;
+
+    while (remainingLength > 0 && currentY < 600) {
+      // Losowa zmiana kierunku
+      currentAngle += (Math.random() - 0.5) * 0.8;
+
+      // Losowa długość segmentu
+      const segmentLength = Math.random() * 30 + 15;
+      const actualLength = Math.min(segmentLength, remainingLength);
+
+      currentX += Math.sin(currentAngle) * actualLength;
+      currentY += Math.cos(currentAngle) * actualLength + actualLength * 0.7; // bias w dół
+
+      points.push({ x: currentX, y: currentY });
+      remainingLength -= actualLength;
+
+      // Szansa na rozgałęzienie (10%)
+      if (Math.random() < 0.1 && remainingLength > 50) {
+        const branchAngle = currentAngle + (Math.random() - 0.5) * 1.5;
+        const branchLength = remainingLength * (Math.random() * 0.6 + 0.2);
+        // Rekursywnie dodaj mniejszą gałąź
+        const subBranch = this.generateLightningBranch(
+          currentX,
+          currentY,
+          branchAngle,
+          branchLength
+        );
+        return { main: points, branches: [subBranch] };
+      }
+    }
+
+    return { main: points, branches: [] };
+  }
+
+  // NOWA METODA - aktualizacja błyskawic
+  updateLightning() {
+    this.lightning.timer++;
+
+    if (this.lightning.active) {
+      this.lightning.duration--;
+
+      // Migotanie błyskawicy
+      if (this.lightning.duration > 0) {
+        this.lightning.intensity = Math.random() * 0.7 + 0.3;
+      } else {
+        this.lightning.active = false;
+        this.lightning.intensity = 0;
+        this.lightning.nextStrike =
+          this.lightning.timer + this.getRandomLightningTime();
+      }
+    } else {
+      // Sprawdź czy czas na nową błyskawicę
+      if (this.lightning.timer >= this.lightning.nextStrike) {
+        this.createLightning();
+        this.lightning.timer = 0;
+      }
+    }
+  }
+
+  // NOWA METODA - rysowanie błyskawic
+  drawLightning() {
+    if (!this.lightning.active || this.lightning.intensity <= 0) return;
+
+    ctx.save();
+
+    // Globalne oświetlenie od błyskawicy
+    ctx.globalAlpha = this.lightning.intensity * 0.4;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 800, 600);
+
+    // Rysowanie gałęzi błyskawicy
+    ctx.globalAlpha = this.lightning.intensity;
+    ctx.strokeStyle = "#ffffff";
+    ctx.shadowColor = "#a0c4ff";
+    ctx.shadowBlur = 15;
+    ctx.lineWidth = 3;
+
+    for (let branch of this.lightning.branches) {
+      this.drawLightningBranch(branch);
+    }
+
+    ctx.restore();
+  }
+
+  // NOWA METODA - rysowanie pojedynczej gałęzi
+  drawLightningBranch(branch) {
+    // Rysuj główną gałąź
+    if (branch.main && branch.main.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(branch.main[0].x, branch.main[0].y);
+
+      for (let i = 1; i < branch.main.length; i++) {
+        ctx.lineTo(branch.main[i].x, branch.main[i].y);
+      }
+      ctx.stroke();
+
+      // Wewnętrzny blask
+      ctx.save();
+      ctx.strokeStyle = "#e0f0ff";
+      ctx.lineWidth = 1;
+      ctx.shadowBlur = 5;
+      ctx.beginPath();
+      ctx.moveTo(branch.main[0].x, branch.main[0].y);
+      for (let i = 1; i < branch.main.length; i++) {
+        ctx.lineTo(branch.main[i].x, branch.main[i].y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Rysuj podgałęzie
+    if (branch.branches) {
+      for (let subBranch of branch.branches) {
+        ctx.save();
+        ctx.lineWidth = 2;
+        this.drawLightningBranch(subBranch);
+        ctx.restore();
+      }
+    }
+  }
+
+  initRain() {
+    this.rainDrops = [];
+    // Stwórz początkowe krople deszczu
+    for (let i = 0; i < 100; i++) {
+      this.rainDrops.push(this.createRainDrop());
+    }
+  }
+
+  // NOWA METODA - tworzenie pojedynczej kropli
+  createRainDrop() {
+    return {
+      x: Math.random() * 800,
+      y: Math.random() * 600,
+      speed: Math.random() * 3 + 2, // prędkość 2-5
+      length: Math.random() * 15 + 5, // długość 5-20
+      opacity: Math.random() * 0.6 + 0.2, // przezroczystość 0.2-0.8
+      angle: Math.random() * 0.2 - 0.1 // lekki kąt -0.1 do 0.1
+    };
+  }
+
+  // NOWA METODA - aktualizacja pozycji kropli
+  updateRain() {
+    for (let drop of this.rainDrops) {
+      // Poruszaj kroplę w dół
+      drop.y += drop.speed;
+      drop.x += drop.angle * drop.speed; // lekki ruch w bok
+
+      // Jeśli kropla wyszła poza ekran, zresetuj na górze
+      if (drop.y > 600) {
+        drop.y = -drop.length;
+        drop.x = Math.random() * 800;
+        drop.speed = Math.random() * 3 + 2;
+        drop.length = Math.random() * 15 + 5;
+        drop.opacity = Math.random() * 0.6 + 0.2;
+        drop.angle = Math.random() * 0.2 - 0.1;
+      }
+
+      // Jeśli kropla wyszła z boku, przenieś na drugą stronę
+      if (drop.x < -10) drop.x = 810;
+      if (drop.x > 810) drop.x = -10;
+    }
+  }
+
+  // NOWA METODA - rysowanie deszczu
+  drawRain() {
+    ctx.save();
+
+    // Rysuj krople deszczu
+    for (let drop of this.rainDrops) {
+      ctx.globalAlpha = drop.opacity;
+      ctx.strokeStyle = "#a0c4e0"; // bladoniebieska barwa deszczu
+      ctx.lineWidth = 1;
+
+      // Narysuj linię kropli
+      ctx.beginPath();
+      ctx.moveTo(drop.x, drop.y);
+      ctx.lineTo(drop.x + drop.angle * drop.length, drop.y + drop.length);
+      ctx.stroke();
+    }
+
+    // Dodaj efekt mgły/pary
+    const fogGradient = ctx.createLinearGradient(0, 500, 0, 600);
+    fogGradient.addColorStop(0, "rgba(200, 220, 240, 0.1)");
+    fogGradient.addColorStop(1, "rgba(200, 220, 240, 0.3)");
+    ctx.fillStyle = fogGradient;
+    ctx.fillRect(0, 500, 800, 100);
+
+    ctx.restore();
+  }
+
+  // NOWA METODA - efekt kałuż
+  drawPuddles() {
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+
+    // Kałuża 1
+    ctx.fillStyle = "#4a6a8a";
+    ctx.beginPath();
+    ctx.ellipse(150, 580, 40, 8, 0, 0, 2 * Math.PI);
+    ctx.fill();
+
+    // Kałuża 2
+    ctx.beginPath();
+    ctx.ellipse(450, 570, 30, 6, 0, 0, 2 * Math.PI);
+    ctx.fill();
+
+    // Kałuża 3
+    ctx.beginPath();
+    ctx.ellipse(650, 585, 35, 7, 0, 0, 2 * Math.PI);
+    ctx.fill();
+
+    // Odbicia światła w kałużach
+    ctx.globalAlpha = 0.2;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.ellipse(150, 580, 20, 4, 0, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.ellipse(450, 570, 15, 3, 0, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.restore();
   }
 
   startMusic() {
@@ -414,11 +839,11 @@ class MenuScene extends Scene {
   render() {
     // Rysuj zdjęcie jako tło
     const img = new Image();
-    img.src = "https://i.imgur.com/UMcbuC8.jpeg";
+    img.src = "https://i.imgur.com/4eI9vWb.png";
     if (img.complete) {
       ctx.drawImage(img, 0, 0, 800, 600);
     } else {
-      // Fallback - gradient jak było wcześniej
+      // Fallback - gradient jak było wcześniej (ale ciemniejszy dla deszczu)
       const gradient = ctx.createLinearGradient(0, 0, 0, 600);
       gradient.addColorStop(0, "#1a1a2e");
       gradient.addColorStop(0.5, "#16213e");
@@ -427,7 +852,22 @@ class MenuScene extends Scene {
       ctx.fillRect(0, 0, 800, 600);
     }
 
+    // AKTUALIZUJ I NARYSUJ DESZCZ
+    this.updateRain();
+
+    // AKTUALIZUJ I NARYSUJ BŁYSKAWICE
+    this.updateLightning();
+    this.drawLightning();
+
+    this.drawRain();
+
     this.animation += 0.02;
+
+    // Dodaj lekkie przyciemnienie przez deszcz (ale nie podczas błyskawicy)
+    if (!this.lightning.active) {
+      ctx.fillStyle = "rgba(30, 40, 60, 0.3)";
+      ctx.fillRect(0, 0, 800, 600);
+    }
 
     ctx.save();
     ctx.shadowColor = "rgba(200, 200, 255, 0.8)";
@@ -443,19 +883,29 @@ class MenuScene extends Scene {
     ctx.fillText("TheSzpil", 400, 190);
     ctx.restore();
 
-    this.drawButton(300, 300, 200, 50, "ROZPOCZNIJ GRĘ", "#B94E39");
-    this.drawButton(300, 370, 200, 50, "O GRZE", "#4E342E");
-    this.drawButton(300, 440, 200, 50, "WWW FAMILOCKA", "#6a4a4a");
+    // Pokaż przyciski tylko jeśli kartka nie jest widoczna
+    if (!this.introPaper.visible) {
+      this.drawButton(300, 300, 200, 50, "ROZPOCZNIJ GRĘ", "#B94E39");
+      this.drawButton(300, 370, 200, 50, "O GRZE", "#4E342E");
+      this.drawButton(300, 440, 200, 50, "WWW FAMILOCKA", "#6a4a4a");
+    }
+
+    // NARYSUJ KAŁUŻE NA KOŃCU
+    this.drawPuddles();
 
     // Dodaj informację o muzyce jeśli nie jest uruchomiona
-    if (!this.musicStarted) {
+    if (!this.musicStarted && !this.introPaper.visible) {
       ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
       ctx.font = "14px Georgia";
       ctx.textAlign = "center";
       ctx.fillText("🔊 Kliknij gdziekolwiek aby włączyć muzykę", 400, 550);
     }
 
-    if (this.hoveredArea) {
+    // AKTUALIZUJ I NARYSUJ KARTKĘ WPROWADZAJĄCĄ
+    this.updateIntroPaper();
+    this.drawIntroPaper();
+
+    if (this.hoveredArea && !this.introPaper.visible) {
       ctx.strokeStyle = "#8a8aaa";
       ctx.lineWidth = 2;
       ctx.strokeRect(
@@ -468,19 +918,31 @@ class MenuScene extends Scene {
   }
 
   drawButton(x, y, w, h, text, color) {
+    // Dodaj lekki efekt mokrości na przyciski
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+
     ctx.fillStyle = color;
     ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = "#6a6a8a";
     ctx.lineWidth = 1;
     ctx.strokeRect(x, y, w, h);
 
+    // Lekki odbłysk mokrości na górze przycisku
+    if (!this.lightning.active) {
+      ctx.globalAlpha = 0.2;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x + 5, y + 5, w - 10, 8);
+    }
+
+    ctx.restore();
+
     ctx.fillStyle = "#e0e0e0";
     ctx.font = "16px Georgia";
     ctx.textAlign = "center";
     ctx.fillText(text, x + w / 2, y + h / 2 + 5);
   }
-}
-
+} // ← ZAMYKA KLASĘ MenuScene
 class CourtyardScene extends Scene {
   constructor() {
     super();
