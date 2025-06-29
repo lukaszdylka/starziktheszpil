@@ -6,7 +6,13 @@ const itemIcons = {
   Łopatka: "⛏️",
   Kość: "🦴",
   "Dowód osobisty": "🪪",
-  List: "✉️"
+  List: "✉️",
+  "Stary klucz": "🗝️",
+  Pamiętnik: "📔",
+  "Kartka z kodem": "📜",
+  "Stara fotografia": "📷",
+  "Stare monety": "🪙",
+  Dokumenty: "📋"
 };
 
 function log(message) {
@@ -205,11 +211,114 @@ function useItem(item) {
   if (item === "List") {
     gameState.hasIntercomCode = true;
     showLetterContent();
+  } else if (item === "Kartka z kodem") {
+    showCodeCard();
+  } else if (item === "Pamiętnik") {
+    showDiary();
+  } else if (item === "Stara fotografia") {
+    showOldPhoto();
+  } else if (item === "Dokumenty") {
+    showDocuments();
   } else {
-    showDialog(`Kliknąłeś na: ${item}`, 2000);
+    showDialog(
+      `Masz przedmiot: ${item}. Może przydać się gdzie indziej?`,
+      2000
+    );
   }
 }
+function showCodeCard() {
+  const cardContent = `
+    <div style="background: #f5f5dc; color: #333; padding: 20px; border-radius: 8px; margin: 10px 0; border: 2px solid #8b7355;">
+      <div style="text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 18px;">
+        📜 UKRYTA KARTKA 📜
+      </div>
+      <div style="text-align: center; margin: 20px 0;">
+        <div style="font-size: 32px; font-weight: bold; color: #8b4513; background: #fffaf0; padding: 15px; border: 1px dashed #8b7355; border-radius: 5px;">
+          2710
+        </div>
+      </div>
+      <div style="font-style: italic; text-align: center; margin-top: 15px; color: #666;">
+        "27 października - dzień kiedy wszystko się zmieniło"
+      </div>
+    </div>
+    <div style="text-align: center; margin-top: 10px;">
+      <button onclick="hideDialog()" style="padding: 8px 16px; background: #8b4513; color: #fff; border: none; border-radius: 4px; cursor: pointer;">
+        Zamknij kartkę
+      </button>
+    </div>
+  `;
+  showDialog(cardContent, 0);
+}
 
+function showDiary() {
+  const diaryContent = `
+    <div style="background: #2f1b14; color: #d4af37; padding: 20px; border-radius: 8px; margin: 10px 0; border: 2px solid #8b4513;">
+      <div style="text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 18px;">
+        📔 PAMIĘTNIK STARZIKA - 1969 📔
+      </div>
+      <div style="background: #1a0f0a; padding: 15px; border-radius: 5px; font-family: serif; line-height: 1.6;">
+        <p><strong>27 października 1969</strong></p>
+        <p style="margin: 10px 0;">"Dziś Maria powiedziała mi ważną wiadomość. Zostanę ojcem! To najszczęśliwszy dzień w moim życiu."</p>
+        <p style="margin: 10px 0;">"Schowałem nasze najważniejsze dokumenty w bezpiecznym miejscu. Numer tego dnia - 2710 - będzie moim kodem. Nigdy tego nie zapomnę."</p>
+        <p style="margin: 10px 0; font-style: italic;">"Dla przyszłych pokoleń..."</p>
+      </div>
+    </div>
+    <div style="text-align: center; margin-top: 10px;">
+      <button onclick="hideDialog()" style="padding: 8px 16px; background: #8b4513; color: #fff; border: none; border-radius: 4px; cursor: pointer;">
+        Zamknij pamiętnik
+      </button>
+    </div>
+  `;
+  showDialog(diaryContent, 0);
+}
+
+function showOldPhoto() {
+  const photoContent = `
+    <div style="background: #f0f0f0; color: #333; padding: 20px; border-radius: 8px; margin: 10px 0; border: 3px solid #666;">
+      <div style="text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 18px;">
+        📷 STARA FOTOGRAFIA 📷
+      </div>
+      <div style="background: #fff; padding: 15px; border: 1px solid #ccc; text-align: center;">
+        <div style="font-size: 60px; margin: 20px 0;">👨‍👩‍👧‍👦</div>
+        <p style="margin: 10px 0;"><strong>Rodzina Dyłka - 1975</strong></p>
+        <p style="margin: 10px 0;">Na tle budynku przy Cmentarnej 5</p>
+        <p style="font-style: italic; color: #666;">Józef, Maria i mały Tomek</p>
+      </div>
+    </div>
+    <div style="text-align: center; margin-top: 10px;">
+      <button onclick="hideDialog()" style="padding: 8px 16px; background: #666; color: #fff; border: none; border-radius: 4px; cursor: pointer;">
+        Zamknij zdjęcie
+      </button>
+    </div>
+  `;
+  showDialog(photoContent, 0);
+}
+
+function showDocuments() {
+  const documentsContent = `
+    <div style="background: #fffef7; color: #333; padding: 20px; border-radius: 8px; margin: 10px 0; border: 2px solid #8b4513;">
+      <div style="text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 18px;">
+        📋 WAŻNE DOKUMENTY 📋
+      </div>
+      <div style="background: #fff; padding: 15px; border: 1px solid #ccc;">
+        <h4>TESTAMENT JÓZEFA DYŁKI</h4>
+        <p style="margin: 10px 0;"><strong>Data:</strong> 15 października 2013</p>
+        <p style="margin: 10px 0;">Mieszkanie przy ul. Cmentarnej 5 przekazuję mojemu synowi Tomkowi.</p>
+        <p style="margin: 10px 0;">Wszystkie pamiątki rodzinne mają pozostać w rodzinie.</p>
+        <hr style="margin: 15px 0;">
+        <h4>AKT WŁASNOŚCI</h4>
+        <p style="margin: 10px 0;">Mieszkanie nr 12, budynek Cmentarna 5</p>
+        <p style="margin: 10px 0;">Właściciel: Józef Dyłka</p>
+      </div>
+    </div>
+    <div style="text-align: center; margin-top: 10px;">
+      <button onclick="hideDialog()" style="padding: 8px 16px; background: #8b4513; color: #fff; border: none; border-radius: 4px; cursor: pointer;">
+        Zamknij dokumenty
+      </button>
+    </div>
+  `;
+  showDialog(documentsContent, 0);
+}
 function showLetterContent() {
   const letterContent = `
         <div style="background: #f5f5f5; color: #333; padding: 15px; border-radius: 5px; margin: 10px 0;">
@@ -375,7 +484,7 @@ class MenuScene extends Scene {
 
     // Dźwięk kartki papieru
     this.paperSound = new Audio("https://files.catbox.moe/h99gh2.mp3");
-    this.paperSound.volume = 0.2;
+    this.paperSound.volume = 0.1;
 
     // NOWY SYSTEM DESZCZU
     this.rainDrops = [];
@@ -993,6 +1102,8 @@ class CourtyardScene extends Scene {
   constructor() {
     super();
     this.setupAreas();
+    this.rainDrops = [];
+    this.initRain();
   }
 
   setupAreas() {
@@ -1314,12 +1425,77 @@ class CourtyardScene extends Scene {
       );
     }
   }
+  // NOWA METODA - inicjalizacja deszczu
+  initRain() {
+    this.rainDrops = [];
+    // Stwórz początkowe krople deszczu (mniej niż w menu)
+    for (let i = 0; i < 60; i++) {
+      this.rainDrops.push(this.createRainDrop());
+    }
+  }
 
+  // NOWA METODA - tworzenie pojedynczej kropli
+  createRainDrop() {
+    return {
+      x: Math.random() * 800,
+      y: Math.random() * 600,
+      speed: Math.random() * 2 + 1.5, // wolniejszy deszcz niż w menu
+      length: Math.random() * 12 + 4, // krótsze krople
+      opacity: Math.random() * 0.4 + 0.1, // bardziej subtelny
+      angle: Math.random() * 0.15 - 0.075 // mniejszy kąt
+    };
+  }
+
+  // NOWA METODA - aktualizacja pozycji kropli
+  updateRain() {
+    for (let drop of this.rainDrops) {
+      // Poruszaj kroplę w dół
+      drop.y += drop.speed;
+      drop.x += drop.angle * drop.speed;
+
+      // Jeśli kropla wyszła poza ekran, zresetuj na górze
+      if (drop.y > 600) {
+        drop.y = -drop.length;
+        drop.x = Math.random() * 800;
+        drop.speed = Math.random() * 2 + 1.5;
+        drop.length = Math.random() * 12 + 4;
+        drop.opacity = Math.random() * 0.4 + 0.1;
+        drop.angle = Math.random() * 0.15 - 0.075;
+      }
+
+      // Jeśli kropla wyszła z boku, przenieś na drugą stronę
+      if (drop.x < -10) drop.x = 810;
+      if (drop.x > 810) drop.x = -10;
+    }
+  }
+
+  // NOWA METODA - rysowanie deszczu
+  drawRain() {
+    ctx.save();
+
+    // Rysuj krople deszczu
+    for (let drop of this.rainDrops) {
+      ctx.globalAlpha = drop.opacity;
+      ctx.strokeStyle = "#a0c4e0"; // bladoniebieska barwa deszczu
+      ctx.lineWidth = 1;
+
+      // Narysuj linię kropli
+      ctx.beginPath();
+      ctx.moveTo(drop.x, drop.y);
+      ctx.lineTo(drop.x + drop.angle * drop.length, drop.y + drop.length);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
   render() {
     // Niebo gradientowe
     const skyGradient = ctx.createLinearGradient(0, 0, 0, 400);
     // ... kod nieba
-
+    // DODAJ TO TUTAJ:
+    // AKTUALIZUJ I NARYSUJ DESZCZ
+    this.updateRain();
+    this.drawRain();
     // Księżyc nad środkowym domem
     this.drawMoon();
 
@@ -1396,15 +1572,15 @@ class CourtyardScene extends Scene {
 
   drawBuildings() {
     // Lewy budynek z cegłą
-    ctx.fillStyle = "#0f0f0f";
+    ctx.fillStyle = "#2a1612";
     ctx.fillRect(0, 0, 200, 450);
 
     // Wzór cegieł - lewa strona
-    ctx.fillStyle = "#1a1a1a";
+    ctx.fillStyle = "#4a2418";
     for (let y = 0; y < 450; y += 20) {
       for (let x = 0; x <= 200; x += 40) {
         const offsetX = y % 40 === 0 ? 0 : 20;
-        ctx.fillStyle = (x + y) % 80 === 0 ? "#151515" : "#1a1a1a";
+        ctx.fillStyle = (x + y) % 80 === 0 ? "#3a1f18" : "#4a2418";
         const brickWidth = Math.min(38, 200 - (x + offsetX));
         if (brickWidth > 0) {
           ctx.fillRect(x + offsetX, y, brickWidth, 18);
@@ -1418,13 +1594,13 @@ class CourtyardScene extends Scene {
     }
 
     // Prawy budynek z cegłą
-    ctx.fillStyle = "#0f0f0f";
+    ctx.fillStyle = "#2a1612";
     ctx.fillRect(600, 0, 200, 450);
-    ctx.fillStyle = "#1a1a1a";
+    ctx.fillStyle = "#4a2418";
     for (let y = 0; y < 450; y += 20) {
       for (let x = 600; x <= 800; x += 40) {
         const offsetX = y % 40 === 0 ? 0 : 20;
-        ctx.fillStyle = (x + y) % 100 === 0 ? "#151515" : "#1a1a1a";
+        ctx.fillStyle = (x + y) % 100 === 0 ? "#3a1f18" : "#4a2418";
         const brickWidth = Math.min(38, 800 - (x + offsetX));
         if (brickWidth > 0) {
           ctx.fillRect(x + offsetX, y, brickWidth, 18);
@@ -1438,13 +1614,13 @@ class CourtyardScene extends Scene {
     }
 
     // Środkowy budynek
-    ctx.fillStyle = "#141414";
+    ctx.fillStyle = "#3a1f18";
     ctx.fillRect(250, 100, 300, 350);
-    ctx.fillStyle = "#1f1f1f";
+    ctx.fillStyle = "#5a2f22";
     for (let y = 100; y < 450; y += 20) {
       for (let x = 250; x <= 550; x += 40) {
         const offsetX = y % 40 === 0 ? 0 : 20;
-        ctx.fillStyle = (x + y) % 120 === 0 ? "#1a1a1a" : "#1f1f1f";
+        ctx.fillStyle = (x + y) % 120 === 0 ? "#4a2418" : "#5a2f22";
         const brickWidth = Math.min(38, 550 - (x + offsetX));
         if (brickWidth > 0) {
           ctx.fillRect(x + offsetX, y, brickWidth, 18);
@@ -2108,22 +2284,451 @@ class CourtyardScene extends Scene {
 class ApartmentScene extends Scene {
   constructor() {
     super();
-    this.addArea(650, 300, 100, 200, () => changeScene("ending"));
+    this.setupAreas();
+
+    // SYSTEM DESZCZU (subtelny w mieszkaniu)
+    this.rainDrops = [];
+    this.initRain();
+
+    // Stan przeszukanych miejsc
+    this.searchedPlaces = {
+      bookshelf: false,
+      tv: false,
+      flower: false,
+      picture: false,
+      plant: false,
+      sofa: false,
+      cabinet: false,
+      lamp: false,
+      window: false
+    };
+  }
+
+  setupAreas() {
+    // POPRAWIONE PRECYZYJNE OBSZARY KLIKALNE (dopasowane do rzeczywistego zdjęcia)
+
+    // REGAŁ Z KSIĄŻKAMI (lewy górny, książki widoczne)
+    this.addArea(100, 120, 90, 120, () => this.examineBookshelf());
+
+    // REGAŁ Z SZKŁEM (lewy górny, szkło za szybą)
+    this.addArea(20, 80, 80, 120, () => this.examineGlassCabinet());
+
+    // DOLNE SZAFKI PO LEWEJ (ciemne szafki na dole)
+    this.addArea(20, 350, 170, 90, () => this.examineLowerCabinet());
+
+    // TELEWIZOR (czarny ekran w środku)
+    this.addArea(220, 220, 100, 80, () => this.examineTV());
+
+    // SZAFKA POD TV (brązowa szafka pod telewizorem)
+    this.addArea(220, 300, 100, 70, () => this.examineTVCabinet());
+
+    // STOLICZEK Z KWIATAMI (mały stoliczek z wazonikiem)
+    this.addArea(330, 220, 60, 100, () => this.examineFlowers());
+
+    // OBRAZ NA ŚCIANIE (haftowany obrazek w ramce)
+    this.addArea(420, 120, 90, 100, () => this.examinePicture());
+
+    // ROŚLINA W DONICZCE (zielona roślina po prawej)
+    this.addArea(520, 200, 70, 130, () => this.examinePlant());
+
+    // SOFA/KANAPA (brązowa kanapa po prawej)
+    this.addArea(590, 330, 180, 150, () => this.examineSofa());
+
+    // LAMPA WISZĄCA (żółta lampa u góry)
+    this.addArea(320, 40, 80, 80, () => this.examineLamp());
+
+    // OKNO Z FIRANKAMI (prawa krawędź z firankami)
+    this.addArea(700, 50, 80, 350, () => this.examineWindow());
+
+    // WYJŚCIE (prawy dolny róg)
+    this.addArea(730, 450, 70, 150, () => {
+      showDialog("Wracasz na podwórko...", 2000);
+      setTimeout(() => changeScene("courtyard"), 2000);
+    });
+  }
+
+  // SYSTEM DESZCZU (podobny jak w podwórku, ale subtelniejszy)
+  initRain() {
+    this.rainDrops = [];
+    for (let i = 0; i < 20; i++) {
+      // Bardzo mało kropli przez okno
+      this.rainDrops.push(this.createRainDrop());
+    }
+  }
+
+  createRainDrop() {
+    return {
+      x: Math.random() * 100 + 720, // Tylko przy oknie
+      y: Math.random() * 400 + 50,
+      speed: Math.random() * 1 + 0.5,
+      length: Math.random() * 8 + 3,
+      opacity: Math.random() * 0.2 + 0.05,
+      angle: Math.random() * 0.1 - 0.05
+    };
+  }
+
+  updateRain() {
+    for (let drop of this.rainDrops) {
+      drop.y += drop.speed;
+      drop.x += drop.angle * drop.speed;
+
+      if (drop.y > 450) {
+        drop.y = 50;
+        drop.x = Math.random() * 100 + 720;
+        drop.speed = Math.random() * 1 + 0.5;
+        drop.length = Math.random() * 8 + 3;
+        drop.opacity = Math.random() * 0.2 + 0.05;
+        drop.angle = Math.random() * 0.1 - 0.05;
+      }
+    }
+  }
+
+  drawRain() {
+    ctx.save();
+    for (let drop of this.rainDrops) {
+      ctx.globalAlpha = drop.opacity;
+      ctx.strokeStyle = "#a0c4e0";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(drop.x, drop.y);
+      ctx.lineTo(drop.x + drop.angle * drop.length, drop.y + drop.length);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // INTERAKCJE Z PRZEDMIOTAMI - POPRAWIONE JEDNORAZOWE BLOKADY
+  examineBookshelf() {
+    const options = [
+      {
+        text: "Przeszukaj książki dokładniej",
+        action: () => {
+          if (!this.searchedPlaces.bookshelf) {
+            this.searchedPlaces.bookshelf = true;
+            addItem("Stary klucz");
+            showDialog(
+              "Za starymi książkami znalazłeś mały, zardzewiały klucz! Został dodany do ekwipunku."
+            );
+          } else {
+            showDialog("Już przeszukałeś książki. Nic więcej tu nie ma.");
+          }
+        }
+      },
+      {
+        text: "Sprawdź szklane naczynia",
+        action: () => {
+          showDialog(
+            "Stare szklanki i filiżanki za szkłem. Jedna ma napis 'Pamiątka z Krynicy 1975'."
+          );
+        }
+      }
+    ];
+    showDialogWithOptions(
+      "Stary regał pełen książek i szkła. Książki pokryte kurzem, niektóre wyglądają na bardzo stare.",
+      options
+    );
+  }
+
+  examineGlassCabinet() {
+    showDialog(
+      "Stare szklanki i filiżanki za szkłem. Jedna ma napis 'Pamiątka z Krynicy 1975'.",
+      3000
+    );
+  }
+
+  examineLowerCabinet() {
+    const options = [
+      {
+        text: "Otwórz dolne szafki",
+        action: () => {
+          if (!this.searchedPlaces.cabinet && hasItem("Stary klucz")) {
+            this.searchedPlaces.cabinet = true;
+            addItem("Pamiętnik");
+            removeItem("Stary klucz");
+            showDialog(
+              "Klucz pasuje! W szafce znalazłeś stary pamiętnik z 1969 roku. Dodano do ekwipunku."
+            );
+          } else if (!hasItem("Stary klucz")) {
+            showDialog(
+              "Szafki są zamknięte na klucz. Potrzebujesz klucza aby je otworzyć."
+            );
+          } else {
+            showDialog("Szafki są już otwarte i puste.");
+          }
+        }
+      },
+      {
+        text: "Sprawdź górę szafek",
+        action: () => {
+          showDialog("Na szafce stoi mała doniczka z uschniętą rośliną.");
+        }
+      }
+    ];
+    showDialogWithOptions(
+      "Ciemne drewniane szafki. Wyglądają na solidne i stare.",
+      options
+    );
+  }
+
+  examineTV() {
+    const options = [
+      {
+        text: "Spróbuj włączyć telewizor",
+        action: () => {
+          showDialog(
+            "Telewizor nie działa. Ekran jest pokryty kurzem. To stary model z lat 80-tych."
+          );
+        }
+      },
+      {
+        text: "Sprawdź za telewizorem",
+        action: () => {
+          showDialog(
+            "Za telewizorem znalazłeś stare kable i notes z numerami telefonów."
+          );
+        }
+      }
+    ];
+    showDialogWithOptions(
+      "Stary telewizor kineskopowy. Wygląda jakby nie był używany od lat.",
+      options
+    );
+  }
+
+  examineTVCabinet() {
+    const options = [
+      {
+        text: "Otwórz szafkę",
+        action: () => {
+          if (!this.searchedPlaces.tv) {
+            this.searchedPlaces.tv = true;
+            addItem("Stara fotografia");
+            showDialog(
+              "W szafce pod telewizorem leży stara fotografia - Starzik z rodziną na tle tego samego budynku! Dodano do ekwipunku."
+            );
+          } else {
+            showDialog("Szafka pod TV jest już pusta.");
+          }
+        }
+      },
+      {
+        text: "Sprawdź z zewnątrz",
+        action: () => {
+          showDialog("Szafka wygląda na często używaną. Może coś w niej jest?");
+        }
+      }
+    ];
+    showDialogWithOptions(
+      "Szafka pod telewizorem. Drzwiczki są lekko uchylone.",
+      options
+    );
+  }
+
+  examineFlowers() {
+    const options = [
+      {
+        text: "Sprawdź wazon bliżej",
+        action: () => {
+          showDialog(
+            "Na wazonie widać napis 'Józef & Maria 1967' - pamiątka ślubna dziadków."
+          );
+        }
+      },
+      {
+        text: "Podziwiaj kwiaty",
+        action: () => {
+          showDialog(
+            "Piękne sztuczne kwiaty w stonowanych kolorach. Wyglądają jakby były tu od dziesięcioleci."
+          );
+        }
+      }
+    ];
+    showDialogWithOptions(
+      "Wazon z sztucznymi kwiatami na małym stoliczku.",
+      options
+    );
+  }
+
+  examinePicture() {
+    const options = [
+      {
+        text: "Sprawdź za obrazem",
+        action: () => {
+          if (!this.searchedPlaces.picture && hasItem("Pamiętnik")) {
+            this.searchedPlaces.picture = true;
+            addItem("Kartka z kodem");
+            showDialog(
+              "Za obrazem znalazłeś ukrytą kartkę z kodem! Dodana do ekwipunku - możesz ją przeczytać klikając na nią."
+            );
+          } else if (!hasItem("Pamiętnik")) {
+            showDialog(
+              "Za obrazem jest pusta ściana. Może coś tu było ukryte, ale potrzebujesz więcej wskazówek?"
+            );
+          } else {
+            showDialog(
+              "Już sprawdziłeś za obrazem. Kartka z kodem już nie ma."
+            );
+          }
+        }
+      },
+      {
+        text: "Przyjrzyj się obrazowi",
+        action: () => {
+          showDialog(
+            "Haftowany obraz przedstawia wieniec z kwiatów. Praca ręczna, prawdopodobnie z lat 60-tych."
+          );
+        }
+      }
+    ];
+    showDialogWithOptions(
+      "Piękny haftowany obraz w drewnianej ramie. Wygląda na pamiątkę rodzinną.",
+      options
+    );
+  }
+
+  examinePlant() {
+    const options = [
+      {
+        text: "Sprawdź doniczkę",
+        action: () => {
+          showDialog(
+            "Brązowa ceramiczna doniczka. Na spodzie widać napis 'Ceramika Bolesławiec 1978'."
+          );
+        }
+      },
+      {
+        text: "Sprawdź liście",
+        action: () => {
+          showDialog(
+            "Roślina wygląda zdrowo mimo wieku mieszkania. Ktoś musiał o nią dbać do niedawna."
+          );
+        }
+      }
+    ];
+    showDialogWithOptions(
+      "Duża roślina doniczkowa w brązowej doniczce.",
+      options
+    );
+  }
+
+  examineSofa() {
+    const options = [
+      {
+        text: "Sprawdź poduszki",
+        action: () => {
+          if (!this.searchedPlaces.sofa) {
+            addItem("Stare monety");
+            showDialog(
+              "Pod poduszkami znalazłeś kilka starych monet i guzik. Monety dodane do ekwipunku."
+            );
+          } else {
+            showDialog("Już sprawdziłeś poduszki. Nic więcej tam nie ma.");
+          }
+        }
+      },
+      {
+        text: "Sprawdź za sofą",
+        action: () => {
+          if (!this.searchedPlaces.sofa && hasItem("Kartka z kodem")) {
+            this.searchedPlaces.sofa = true;
+            addItem("Dokumenty");
+            showDialog(
+              "Za sofą stoi mały sejf! Kod z kartki działał! Znalazłeś ważne dokumenty i testament Starzika!"
+            );
+          } else if (!hasItem("Kartka z kodem")) {
+            showDialog(
+              "Za sofą stoi mała skrytka z kodem cyfrowym. Potrzebujesz kodu aby ją otworzyć."
+            );
+          } else {
+            showDialog("Sejf za sofą jest już otwarty i pusty.");
+          }
+        }
+      }
+    ];
+    showDialogWithOptions(
+      "Wygodna, stara sofa w brązowym kolorze. Obicie jest miejscami wytarte.",
+      options
+    );
+  }
+
+  examineLamp() {
+    const options = [
+      {
+        text: "Sprawdź żarówkę",
+        action: () => {
+          showDialog(
+            "Stara żarówka wciąż świeci ciepłym światłem. Marka 'Tungsram' - węgierska produkcja."
+          );
+        }
+      },
+      {
+        text: "Sprawdź przewód",
+        action: () => {
+          showDialog(
+            "Stary przewód w materiałowej osłonie. Typowy dla lat 70-tych."
+          );
+        }
+      }
+    ];
+    showDialogWithOptions("Żółta lampa wisząca w stylu lat 70-tych.", options);
+  }
+
+  examineWindow() {
+    const options = [
+      {
+        text: "Sprawdź parapet",
+        action: () => {
+          showDialog(
+            "Na parapecie leżą stare gazety z 2013 roku i zwiędły kwiat w szklanym słoiku."
+          );
+        }
+      },
+      {
+        text: "Spojrz przez okno",
+        action: () => {
+          showDialog(
+            "Przez okno widać deszczowe podwórko gdzie byłeś wcześniej. Deszcz wciąż pada."
+          );
+        }
+      }
+    ];
+    showDialogWithOptions(
+      "Okno z kremowymi firankami. Widać przez nie podwórko.",
+      options
+    );
   }
 
   render() {
-    ctx.fillStyle = "#2a2a1a";
+    // Rysuj zdjęcie mieszkania jako tło
+    const img = new Image();
+    img.src = "https://i.imgur.com/CcmvRTN.jpeg"; // TUTAJ WSTAW URL DO ZDJĘCIA
+    if (img.complete) {
+      ctx.drawImage(img, 0, 0, 800, 600);
+    } else {
+      // Fallback - brązowe tło jeśli zdjęcie się nie załaduje
+      ctx.fillStyle = "#8B4513";
+      ctx.fillRect(0, 0, 800, 600);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "20px Georgia";
+      ctx.textAlign = "center";
+      ctx.fillText("Mieszkanie Starzika", 400, 300);
+      ctx.fillText("(Ładowanie zdjęcia...)", 400, 330);
+    }
+
+    // AKTUALIZUJ I NARYSUJ SUBTELNY DESZCZ
+    this.updateRain();
+    this.drawRain();
+
+    // Dodaj lekkie przyciemnienie dla klimatu
+    ctx.fillStyle = "rgba(20, 20, 30, 0.1)";
     ctx.fillRect(0, 0, 800, 600);
 
-    ctx.fillStyle = "#e0e0ff";
-    ctx.font = "20px Georgia";
-    ctx.textAlign = "center";
-    ctx.fillText("Mieszkanie Starzika", 400, 300);
-    ctx.fillText("Kliknij na wyjście →", 400, 330);
-
+    // Rysuj obszary hover dla debugowania (opcjonalne)
     if (this.hoveredArea) {
-      ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
-      ctx.fillRect(
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(
         this.hoveredArea.x,
         this.hoveredArea.y,
         this.hoveredArea.w,
@@ -2132,7 +2737,6 @@ class ApartmentScene extends Scene {
     }
   }
 }
-
 class EndingScene extends Scene {
   constructor() {
     super();
@@ -2192,7 +2796,6 @@ class EndingScene extends Scene {
     }
   }
 }
-
 function gameLoop() {
   try {
     if (!ctx || !canvas) {
