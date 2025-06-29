@@ -30,7 +30,18 @@ function checkIntercomCodeDirect(code) {
     showDialog("Nieprawidłowy kod. Sprawdź wskazówki w liście.", 3000);
   }
 }
+// PRELOAD OBRAZÓW
+const preloadImages = {
+  courtyard: new Image(),
+  apartment: new Image()
+};
 
+preloadImages.courtyard.src = "https://i.imgur.com/i95HMrD.png";
+preloadImages.apartment.src = "https://i.imgur.com/CcmvRTN.jpeg";
+
+// Zacznij ładowanie od razu
+preloadImages.courtyard.onload = () => console.log("Podwórko załadowane!");
+preloadImages.apartment.onload = () => console.log("Mieszkanie załadowane!");
 function initGame() {
   try {
     canvas = document.getElementById("canvas");
@@ -481,14 +492,15 @@ class MenuScene extends Scene {
     this.backgroundMusic.loop = true;
     this.backgroundMusic.volume = 0.3;
     this.musicStarted = false;
-
-    // Dźwięk kartki papieru
     this.paperSound = new Audio("https://files.catbox.moe/h99gh2.mp3");
-    this.paperSound.volume = 0.1;
+    this.paperSound.volume = 1;
 
     // NOWY SYSTEM DESZCZU
     this.rainDrops = [];
     this.initRain();
+    // Dźwięk księżyca
+    this.moonSound = new Audio("https://files.catbox.moe/hc89rk.mp3");
+    this.moonSound.volume = 0.7;
 
     // SYSTEM BŁYSKAWIC
     this.lightning = {
@@ -520,22 +532,58 @@ class MenuScene extends Scene {
     this.addArea(300, 370, 200, 50, () =>
       showDialog(
         "Krótka gra przygodowa - prequel escape roomu Familock w Świętochłowicach.",
-        0
+        2000
       )
     );
     this.addArea(300, 440, 200, 50, () => {
       showDialog("Przekierowywanie do Familock...", 2000);
       setTimeout(() => window.open("https://www.familock.pl", "_blank"), 1000);
     });
+
+    // NOWY PRZYCISK PEŁNEGO EKRANU (prawy dolny róg)
+    this.addArea(650, 520, 120, 40, () => this.toggleFullscreen());
   }
 
-  // NOWA METODA - pokazanie kartki wprowadzającej
+  // NOWA METODA - przełączanie pełnego ekranu
+  toggleFullscreen() {
+    try {
+      if (!document.fullscreenElement) {
+        // Wejdź w pełny ekran
+        const gameContainer =
+          document.querySelector(".game-container") || document.body;
+        if (gameContainer.requestFullscreen) {
+          gameContainer.requestFullscreen();
+        } else if (gameContainer.webkitRequestFullscreen) {
+          gameContainer.webkitRequestFullscreen();
+        } else if (gameContainer.msRequestFullscreen) {
+          gameContainer.msRequestFullscreen();
+        }
+        showDialog(
+          "Gra uruchomiona na pełnym ekranie! Naciśnij ESC aby wyjść.",
+          3000
+        );
+      } else {
+        // Wyjdź z pełnego ekranu
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        }
+        showDialog("Wyszedłeś z pełnego ekranu.", 2000);
+      }
+    } catch (error) {
+      showDialog("Przeglądarka nie obsługuje pełnego ekranu.", 3000);
+      console.log("Fullscreen error:", error);
+    }
+  }
   showIntroPaper() {
-    this.introPaper.visible = true;
-    this.introPaper.animation = 0;
     this.paperSound
       .play()
       .catch((e) => console.log("Nie można odtworzyć dźwięku kartki:", e));
+    this.introPaper.visible = true;
+    this.introPaper.animation = 0;
 
     // USUŃ WSZYSTKIE obszary kliknięcia przycisków
     this.clickAreas = this.clickAreas.filter((area) => {
@@ -1009,6 +1057,9 @@ class MenuScene extends Scene {
       this.drawButton(300, 300, 200, 50, "ROZPOCZNIJ GRĘ", "main");
       this.drawButton(300, 370, 200, 50, "O GRZE", "secondary");
       this.drawButton(300, 440, 200, 50, "WWW FAMILOCKA", "secondary");
+
+      // NOWY PRZYCISK PEŁNEGO EKRANU
+      this.drawButton(650, 520, 120, 40, "PEŁNY EKRAN", "fullscreen");
     }
 
     // NARYSUJ KAŁUŻE NA KOŃCU
@@ -1064,6 +1115,22 @@ class MenuScene extends Scene {
       }
       // Tekst zawsze jasny i czytelny
       ctx.fillStyle = "#ffffff";
+    } else if (type === "fullscreen") {
+      // PRZYCISK PEŁNEGO EKRANU - mniejszy, kompaktowy
+      if (isHovered) {
+        ctx.fillStyle = "#4a5568";
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = "#38a169"; // Zielony akcent
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+      } else {
+        ctx.fillStyle = "#2d3748";
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = "#4a5568";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, w, h);
+      }
+      ctx.fillStyle = "#ffffff";
     } else {
       // PRZYCISKI DRUGORZĘDNE - jeszcze prostsze
       if (isHovered) {
@@ -1093,7 +1160,8 @@ class MenuScene extends Scene {
     ctx.restore();
 
     // Tekst przycisku - bold dla lepszej czytelności
-    ctx.font = "bold 16px Georgia";
+    ctx.font =
+      type === "fullscreen" ? "bold 12px Georgia" : "bold 16px Georgia";
     ctx.textAlign = "center";
     ctx.fillText(text, x + w / 2, y + h / 2 + 5);
   }
@@ -1102,12 +1170,21 @@ class CourtyardScene extends Scene {
   constructor() {
     super();
     this.setupAreas();
+
+    // SYSTEM DESZCZU (subtelny w podwórku)
     this.rainDrops = [];
     this.initRain();
+
+    // Dźwięk księżyca
+    this.moonSound = new Audio("https://files.catbox.moe/hc89rk.mp3");
+    this.moonSound.volume = 0.7;
   }
 
   setupAreas() {
-    this.addArea(350, 450, 100, 80, () => {
+    // DOPRECYZOWANE OBSZARY KLIKALNE (na podstawie screenshotu)
+
+    // KRATKA KANALIZACYJNA (środek, na dole)
+    this.addArea(320, 450, 100, 80, () => {
       if (gameState.wellOpened) {
         showDialog("Kratka kanalizacyjna jest już otwarta.");
       } else {
@@ -1115,7 +1192,8 @@ class CourtyardScene extends Scene {
       }
     });
 
-    this.addArea(320, 480, 25, 40, () => {
+    // ŁOPATKA (mała, przy kratce - czerwona ramka widoczna)
+    this.addArea(320, 490, 20, 35, () => {
       if (!gameState.hasSpade) {
         addItem("Łopatka");
         gameState.hasSpade = true;
@@ -1125,8 +1203,8 @@ class CourtyardScene extends Scene {
       }
     });
 
-    // Przeniesiony kopczyk ziemi - przy krzakach (na dole)
-    this.addArea(650, 560, 16, 12, () => {
+    // KOPCZYK ZIEMI (prawy dolny róg - zielone krzaki)
+    this.addArea(650, 560, 20, 15, () => {
       if (gameState.hasBone) {
         if (gameState.boneVisible) {
           addItem("Kość");
@@ -1144,24 +1222,28 @@ class CourtyardScene extends Scene {
       }
     });
 
-    // Obszar kliknięcia dla kości (gdy jest widoczna) - przesunięty na dół
+    // KOŚĆ (gdy widoczna)
     if (gameState.boneVisible) {
-      this.addArea(655, 565, 12, 7, () => {
+      this.addArea(655, 565, 12, 8, () => {
         addItem("Kość");
         gameState.boneVisible = false;
         showDialog("Podniosłeś starą kość!");
       });
     }
 
-    // Postaci - obszary klikalne
-    this.addArea(80, 350, 80, 120, () => this.talkToJanitor()); // Pani sprzątająca
-    this.addArea(550, 320, 120, 150, () => this.talkToNeighbor()); // Pan Kowalski z psem
-    this.addArea(380, 300, 70, 120, () => this.talkToPostman()); // Listonosz
+    // PANI SPRZĄTAJĄCA (lewa postać)
+    this.addArea(80, 350, 80, 120, () => this.talkToJanitor());
 
-    // Domofon
+    // LISTONOSZ (środkowa postać)
+    this.addArea(380, 300, 70, 120, () => this.talkToPostman());
+
+    // PAN KOWALSKI Z PSEM (prawa postać)
+    this.addArea(550, 320, 120, 150, () => this.talkToNeighbor());
+
+    // DOMOFON (mały czerwony prostokąt przy drzwiach)
     this.addArea(475, 290, 25, 40, () => showIntercomKeypad());
 
-    // Nowe drzwi do budynku Cmentarna 5 - teraz wyżej
+    // DRZWI BUDYNKU (czerwona ramka przy "CMENTARNA 5")
     this.addArea(390, 250, 60, 120, () => {
       if (gameState.intercomUnlocked) {
         changeScene("apartment");
@@ -1169,8 +1251,202 @@ class CourtyardScene extends Scene {
         showDialog("Drzwi są zamknięte. Spróbuj użyć domofonu...");
       }
     });
+
+    // KSIĘŻYC (jasne koło u góry)
+    this.addArea(375, 35, 50, 50, () => this.clickMoon());
   }
 
+  // SYSTEM DESZCZU (podobny jak w menu, ale subtelniejszy)
+  initRain() {
+    this.rainDrops = [];
+    for (let i = 0; i < 60; i++) {
+      this.rainDrops.push(this.createRainDrop());
+    }
+  }
+
+  createRainDrop() {
+    return {
+      x: Math.random() * 800,
+      y: Math.random() * 600,
+      speed: Math.random() * 2 + 1.5,
+      length: Math.random() * 12 + 4,
+      opacity: Math.random() * 0.4 + 0.1,
+      angle: Math.random() * 0.15 - 0.075
+    };
+  }
+
+  updateRain() {
+    for (let drop of this.rainDrops) {
+      drop.y += drop.speed;
+      drop.x += drop.angle * drop.speed;
+
+      if (drop.y > 600) {
+        drop.y = -drop.length;
+        drop.x = Math.random() * 800;
+        drop.speed = Math.random() * 2 + 1.5;
+        drop.length = Math.random() * 12 + 4;
+        drop.opacity = Math.random() * 0.4 + 0.1;
+        drop.angle = Math.random() * 0.15 - 0.075;
+      }
+
+      if (drop.x < -10) drop.x = 810;
+      if (drop.x > 810) drop.x = -10;
+    }
+  }
+
+  drawRain() {
+    ctx.save();
+    for (let drop of this.rainDrops) {
+      ctx.globalAlpha = drop.opacity;
+      ctx.strokeStyle = "#a0c4e0";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(drop.x, drop.y);
+      ctx.lineTo(drop.x + drop.angle * drop.length, drop.y + drop.length);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // INTERAKTYWNE ELEMENTY DO NARYSOWANIA
+  drawSewerGrate() {
+    const grateX = 350,
+      grateY = 450;
+
+    if (!gameState.wellOpened) {
+      // KRATKA Z KŁÓDKĄ - zamknięta
+      ctx.fillStyle = "#3a3a3a";
+      ctx.fillRect(grateX + 10, grateY + 20, 80, 80);
+
+      // Kratka metalowa
+      ctx.fillStyle = "#0a0a0a";
+      ctx.fillRect(grateX + 15, grateY + 25, 70, 70);
+
+      // Pręty kratki
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = "#4a4a4a";
+        ctx.fillRect(grateX + 20 + i * 10, grateY + 25, 3, 70);
+        ctx.fillRect(grateX + 15, grateY + 30 + i * 10, 70, 3);
+      }
+
+      // KŁÓDKA
+      ctx.fillStyle = "#4a4a2a";
+      ctx.fillRect(grateX + 40, grateY + 50, 20, 15);
+      ctx.strokeStyle = "#6a6a4a";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(grateX + 40, grateY + 50, 20, 15);
+
+      // Ucho kłódki
+      ctx.strokeStyle = "#5a5a3a";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(grateX + 50, grateY + 48, 8, Math.PI, 0);
+      ctx.stroke();
+    } else {
+      // KRATKA OTWARTA - bez kłódki
+      ctx.fillStyle = "#3a3a3a";
+      ctx.fillRect(grateX + 10, grateY + 20, 80, 80);
+
+      ctx.fillStyle = "#0a0a0a";
+      ctx.fillRect(grateX + 15, grateY + 25, 70, 70);
+
+      // Pręty kratki (bez kłódki)
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = "#4a4a4a";
+        ctx.fillRect(grateX + 20 + i * 10, grateY + 25, 3, 70);
+        ctx.fillRect(grateX + 15, grateY + 30 + i * 10, 70, 3);
+      }
+    }
+  }
+
+  drawSpade() {
+    if (gameState.hasSpade) return; // Nie rysuj jeśli wzięta
+
+    const spadeX = 320,
+      spadeY = 480;
+
+    // Trzonek łopatki
+    ctx.fillStyle = "#8a6a4a";
+    ctx.fillRect(spadeX + 10, spadeY, 4, 35);
+
+    // Słoje drewna
+    ctx.fillStyle = "#7a5a3a";
+    ctx.fillRect(spadeX + 10, spadeY + 5, 4, 1);
+    ctx.fillRect(spadeX + 10, spadeY + 12, 4, 1);
+    ctx.fillRect(spadeX + 10, spadeY + 20, 4, 1);
+
+    // Metalowa część
+    ctx.fillStyle = "#5a5a5a";
+    ctx.fillRect(spadeX + 6, spadeY + 30, 12, 8);
+
+    // Odblaski na metalu
+    ctx.fillStyle = "#7a7a7a";
+    ctx.fillRect(spadeX + 7, spadeY + 31, 2, 1);
+    ctx.fillRect(spadeX + 15, spadeY + 33, 2, 1);
+  }
+
+  drawMound() {
+    const mound2X = 650,
+      mound2Y = 560;
+
+    if (!gameState.hasBone) {
+      // KOPCZYK ZIEMI - normalny
+      ctx.fillStyle = "#4a3a2a";
+      ctx.beginPath();
+      ctx.ellipse(mound2X + 8, mound2Y + 6, 8, 5, 0, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.fillStyle = "#5a4a3a";
+      ctx.beginPath();
+      ctx.ellipse(mound2X + 8, mound2Y + 4, 5, 3, 0, 0, 2 * Math.PI);
+      ctx.fill();
+    } else if (!gameState.boneVisible) {
+      // WYKOPANA DZIURA - po zabraniu kości
+      ctx.fillStyle = "#2a2a1a";
+      ctx.beginPath();
+      ctx.ellipse(mound2X + 8, mound2Y + 6, 10, 6, 0, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.fillStyle = "#1a1a0a";
+      ctx.beginPath();
+      ctx.ellipse(mound2X + 8, mound2Y + 6, 6, 4, 0, 0, 2 * Math.PI);
+      ctx.fill();
+    } else {
+      // WYKOPANY Z WIDOCZNĄ KOŚCIĄ
+      ctx.fillStyle = "#3a3a2a";
+      ctx.beginPath();
+      ctx.ellipse(mound2X + 8, mound2Y + 6, 9, 6, 0, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  }
+
+  drawBone() {
+    if (!gameState.boneVisible) return; // Nie rysuj jeśli nie widoczna
+
+    const boneX = 655,
+      boneY = 565;
+
+    // Główna część kości
+    ctx.fillStyle = "#eaeaea";
+    ctx.fillRect(boneX, boneY, 12, 4);
+
+    // Końcówki kości
+    ctx.fillStyle = "#f0f0f0";
+    ctx.beginPath();
+    ctx.arc(boneX + 1, boneY + 2, 3, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(boneX + 11, boneY + 2, 3, 0, 2 * Math.PI);
+    ctx.fill();
+
+    // Szczegóły kości
+    ctx.fillStyle = "#d0d0d0";
+    ctx.fillRect(boneX + 3, boneY + 1, 1, 1);
+    ctx.fillRect(boneX + 7, boneY + 3, 1, 1);
+    ctx.fillRect(boneX + 9, boneY + 1, 1, 1);
+  }
+
+  // DIALOGI Z POSTACIAMI (bez zmian)
   talkToJanitor() {
     if (gameState.gotCode) {
       showDialog(
@@ -1425,860 +1701,40 @@ class CourtyardScene extends Scene {
       );
     }
   }
-  // NOWA METODA - inicjalizacja deszczu
-  initRain() {
-    this.rainDrops = [];
-    // Stwórz początkowe krople deszczu (mniej niż w menu)
-    for (let i = 0; i < 60; i++) {
-      this.rainDrops.push(this.createRainDrop());
-    }
+
+  // NOWA METODA - kliknięcie księżyca
+  clickMoon() {
+    this.moonSound
+      .play()
+      .catch((e) => console.log("Nie można odtworzyć dźwięku księżyca:", e));
+    showDialog("Księżyc świeci tajemniczo nad Świętochłowicami...", 3000);
   }
 
-  // NOWA METODA - tworzenie pojedynczej kropli
-  createRainDrop() {
-    return {
-      x: Math.random() * 800,
-      y: Math.random() * 600,
-      speed: Math.random() * 2 + 1.5, // wolniejszy deszcz niż w menu
-      length: Math.random() * 12 + 4, // krótsze krople
-      opacity: Math.random() * 0.4 + 0.1, // bardziej subtelny
-      angle: Math.random() * 0.15 - 0.075 // mniejszy kąt
-    };
-  }
-
-  // NOWA METODA - aktualizacja pozycji kropli
-  updateRain() {
-    for (let drop of this.rainDrops) {
-      // Poruszaj kroplę w dół
-      drop.y += drop.speed;
-      drop.x += drop.angle * drop.speed;
-
-      // Jeśli kropla wyszła poza ekran, zresetuj na górze
-      if (drop.y > 600) {
-        drop.y = -drop.length;
-        drop.x = Math.random() * 800;
-        drop.speed = Math.random() * 2 + 1.5;
-        drop.length = Math.random() * 12 + 4;
-        drop.opacity = Math.random() * 0.4 + 0.1;
-        drop.angle = Math.random() * 0.15 - 0.075;
-      }
-
-      // Jeśli kropla wyszła z boku, przenieś na drugą stronę
-      if (drop.x < -10) drop.x = 810;
-      if (drop.x > 810) drop.x = -10;
-    }
-  }
-
-  // NOWA METODA - rysowanie deszczu
-  drawRain() {
-    ctx.save();
-
-    // Rysuj krople deszczu
-    for (let drop of this.rainDrops) {
-      ctx.globalAlpha = drop.opacity;
-      ctx.strokeStyle = "#a0c4e0"; // bladoniebieska barwa deszczu
-      ctx.lineWidth = 1;
-
-      // Narysuj linię kropli
-      ctx.beginPath();
-      ctx.moveTo(drop.x, drop.y);
-      ctx.lineTo(drop.x + drop.angle * drop.length, drop.y + drop.length);
-      ctx.stroke();
-    }
-
-    ctx.restore();
-  }
   render() {
-    // Niebo gradientowe
-    const skyGradient = ctx.createLinearGradient(0, 0, 0, 400);
-    // ... kod nieba
-    // DODAJ TO TUTAJ:
+    // NOWE TŁO Z BUDYNKAMI I POSTACIAMI
+    const img = new Image();
+    img.src = "https://i.imgur.com/i95HMrD.png";
+    if (img.complete) {
+      ctx.drawImage(img, 0, 0, 800, 600);
+    } else {
+      // Fallback jeśli się nie załaduje
+      ctx.fillStyle = "#2a2520";
+      ctx.fillRect(0, 0, 800, 600);
+    }
+
     // AKTUALIZUJ I NARYSUJ DESZCZ
     this.updateRain();
     this.drawRain();
-    // Księżyc nad środkowym domem
-    this.drawMoon();
 
-    // NOWE BUDYNKI
-    this.drawBuildings();
-
-    // Ziemia
-    ctx.fillStyle = "#2a2520";
-    ctx.fillRect(0, 400, 800, 200);
-
-    // Kratka kanalizacyjna - szczegółowa
-    this.drawSewerGrate();
-
-    // Łopatka (jeśli nie wzięta) - szczegółowa
-    if (!gameState.hasSpade) {
-      this.drawSpade();
-    }
-
-    // Krzaczki po prawej stronie (z nowym kopczykiem)
-    this.drawBushes();
-
-    // === POSTACIE (na końcu, żeby były widoczne) ===
-    this.drawJanitor(80, 350); // Pani sprzątająca - lewy dół
-    this.drawNeighbor(550, 320); // Pan Kowalski z psem - prawy dół
-    this.drawPostman(380, 300); // Listonosz - centrum
-  }
-
-  drawMoon() {
-    // Pozycja księżyca nad środkowym budynkiem
-    const moonX = 420,
-      moonY = 80;
-
-    // Główny krąg księżyca
-    ctx.fillStyle = "#f0f0e0";
-    ctx.beginPath();
-    ctx.arc(moonX, moonY, 25, 0, 2 * Math.PI);
-    ctx.fill();
-
-    // Blask księżyca
-    const moonGlow = ctx.createRadialGradient(
-      moonX,
-      moonY,
-      25,
-      moonX,
-      moonY,
-      60
-    );
-    moonGlow.addColorStop(0, "rgba(240, 240, 224, 0.3)");
-    moonGlow.addColorStop(0.5, "rgba(240, 240, 224, 0.1)");
-    moonGlow.addColorStop(1, "rgba(240, 240, 224, 0)");
-    ctx.fillStyle = moonGlow;
-    ctx.beginPath();
-    ctx.arc(moonX, moonY, 60, 0, 2 * Math.PI);
-    ctx.fill();
-
-    // Kratery na księżycu
-    ctx.fillStyle = "#e0e0d0";
-    ctx.beginPath();
-    ctx.arc(moonX - 8, moonY - 5, 4, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(moonX + 6, moonY + 8, 3, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(moonX + 10, moonY - 10, 2, 0, 2 * Math.PI);
-    ctx.fill();
-
-    // Delikatne cienie na księżycu
-    ctx.fillStyle = "#d0d0c0";
-    ctx.beginPath();
-    ctx.arc(moonX - 5, moonY + 12, 6, 0, 2 * Math.PI);
-    ctx.fill();
-  }
-
-  drawBuildings() {
-    // Lewy budynek z cegłą
-    ctx.fillStyle = "#2a1612";
-    ctx.fillRect(0, 0, 200, 450);
-
-    // Wzór cegieł - lewa strona
-    ctx.fillStyle = "#4a2418";
-    for (let y = 0; y < 450; y += 20) {
-      for (let x = 0; x <= 200; x += 40) {
-        const offsetX = y % 40 === 0 ? 0 : 20;
-        ctx.fillStyle = (x + y) % 80 === 0 ? "#3a1f18" : "#4a2418";
-        const brickWidth = Math.min(38, 200 - (x + offsetX));
-        if (brickWidth > 0) {
-          ctx.fillRect(x + offsetX, y, brickWidth, 18);
-          ctx.fillStyle = "#0a0a0a";
-          ctx.fillRect(x + offsetX, y + 18, brickWidth, 2);
-          if (x + offsetX + brickWidth < 200) {
-            ctx.fillRect(x + offsetX + brickWidth, y, 2, 20);
-          }
-        }
-      }
-    }
-
-    // Prawy budynek z cegłą
-    ctx.fillStyle = "#2a1612";
-    ctx.fillRect(600, 0, 200, 450);
-    ctx.fillStyle = "#4a2418";
-    for (let y = 0; y < 450; y += 20) {
-      for (let x = 600; x <= 800; x += 40) {
-        const offsetX = y % 40 === 0 ? 0 : 20;
-        ctx.fillStyle = (x + y) % 100 === 0 ? "#3a1f18" : "#4a2418";
-        const brickWidth = Math.min(38, 800 - (x + offsetX));
-        if (brickWidth > 0) {
-          ctx.fillRect(x + offsetX, y, brickWidth, 18);
-          ctx.fillStyle = "#0a0a0a";
-          ctx.fillRect(x + offsetX, y + 18, brickWidth, 2);
-          if (x + offsetX + brickWidth < 800) {
-            ctx.fillRect(x + offsetX + brickWidth, y, 2, 20);
-          }
-        }
-      }
-    }
-
-    // Środkowy budynek
-    ctx.fillStyle = "#3a1f18";
-    ctx.fillRect(250, 100, 300, 350);
-    ctx.fillStyle = "#5a2f22";
-    for (let y = 100; y < 450; y += 20) {
-      for (let x = 250; x <= 550; x += 40) {
-        const offsetX = y % 40 === 0 ? 0 : 20;
-        ctx.fillStyle = (x + y) % 120 === 0 ? "#4a2418" : "#5a2f22";
-        const brickWidth = Math.min(38, 550 - (x + offsetX));
-        if (brickWidth > 0) {
-          ctx.fillRect(x + offsetX, y, brickWidth, 18);
-          ctx.fillStyle = "#0a0a0a";
-          ctx.fillRect(x + offsetX, y + 18, brickWidth, 2);
-          if (x + offsetX + brickWidth < 550) {
-            ctx.fillRect(x + offsetX + brickWidth, y, 2, 20);
-          }
-        }
-      }
-    }
-
-    this.drawDetailedWindows();
-    this.drawBuildingEntrance();
-  }
-
-  drawDetailedWindows() {
-    // Inicjalizacja stanu okien jeśli nie istnieje
-    if (!this.windowStates) {
-      this.windowStates = {};
-      this.windowTimer = 0;
-    }
-
-    this.windowTimer++;
-
-    // Co 60 klatek (około 1 sekunda) losowo zmień niektóre okna
-    if (this.windowTimer % 60 === 0) {
-      // Tylko 10% szans na zmianę każdego okna
-      if (Math.random() < 0.1)
-        this.windowStates["30_80"] = !this.windowStates["30_80"];
-      if (Math.random() < 0.1)
-        this.windowStates["120_180"] = !this.windowStates["120_180"];
-      if (Math.random() < 0.1)
-        this.windowStates["350_120"] = !this.windowStates["350_120"];
-      if (Math.random() < 0.1)
-        this.windowStates["280_220"] = !this.windowStates["280_220"];
-      if (Math.random() < 0.1)
-        this.windowStates["630_80"] = !this.windowStates["630_80"];
-    }
-
-    // Okna lewego budynku - niektóre stale świecą
-    this.drawWindow(30, 80, this.windowStates["30_80"] || false);
-    this.drawWindow(120, 80, false);
-    this.drawWindow(30, 180, true); // zawsze świeci
-    this.drawWindow(120, 180, this.windowStates["120_180"] || false);
-    this.drawWindow(30, 280, true); // zawsze świeci
-    this.drawWindow(120, 280, false);
-
-    // Okna środkowego budynku - usunięto dolne okna żeby zrobić miejsce na drzwi
-    this.drawWindow(280, 150, false);
-    this.drawWindow(350, 150, this.windowStates["350_120"] || true); // zazwyczaj świeci
-    this.drawWindow(420, 150, false);
-
-    // Okna prawego budynku
-    this.drawWindow(630, 80, this.windowStates["630_80"] || true); // zazwyczaj świeci
-    this.drawWindow(720, 80, false);
-    this.drawWindow(630, 180, false);
-    this.drawWindow(720, 180, true); // zawsze świeci
-    this.drawWindow(630, 280, false);
-    this.drawWindow(720, 280, false);
-  }
-
-  drawWindow(x, y, isLit) {
-    const windowWidth = 40;
-    const windowHeight = 50;
-
-    // Rama okna
-    ctx.fillStyle = "#0a0a0a";
-    ctx.fillRect(x, y, windowWidth, windowHeight);
-
-    // Ościeżnica okna
-    ctx.fillStyle = "#050505";
-    ctx.fillRect(x + 2, y + 2, windowWidth - 4, windowHeight - 4);
-
-    // Szyba
-    if (isLit) {
-      ctx.fillStyle = "#6a5a2a";
-      ctx.fillRect(x + 4, y + 4, windowWidth - 8, windowHeight - 8);
-      ctx.fillStyle = "#8a7a3a";
-      ctx.fillRect(x + 8, y + 8, windowWidth - 16, windowHeight - 16);
-      // Światło z okna
-      ctx.fillStyle = "#aa9a4a";
-      ctx.fillRect(x + 6, y + 6, 8, 8);
-    } else {
-      ctx.fillStyle = "#1a1a2a";
-      ctx.fillRect(x + 4, y + 4, windowWidth - 8, windowHeight - 8);
-      ctx.fillStyle = "#2a2a3a";
-      ctx.fillRect(x + 6, y + 6, 6, 6);
-    }
-
-    // Krzyż ramy okiennej
-    ctx.fillStyle = "#2a2a2a";
-    ctx.fillRect(x + 2, y + windowHeight / 2 - 1, windowWidth - 4, 2);
-    ctx.fillRect(x + windowWidth / 2 - 1, y + 2, 2, windowHeight - 4);
-
-    // Ramki okna
-    ctx.strokeStyle = "#0a0a0a";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x, y, windowWidth, windowHeight);
-    ctx.strokeStyle = "#151515";
-    ctx.strokeRect(x + 2, y + 2, windowWidth - 4, windowHeight - 4);
-  }
-
-  drawBuildingEntrance() {
-    // Tabliczka z adresem
-    ctx.fillStyle = "#3a3a3a";
-    ctx.fillRect(380, 220, 80, 25);
-    ctx.strokeStyle = "#2a2a2a";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(380, 220, 80, 25);
-
-    ctx.fillStyle = "#ddd";
-    ctx.font = "bold 12px monospace";
-    ctx.textAlign = "center";
-    ctx.fillText("CMENTARNA 5", 420, 237);
-
-    // Drzwi wejściowe
-    ctx.fillStyle = "#2a1a0a";
-    ctx.fillRect(390, 250, 60, 120);
-
-    // Rama drzwi
-    ctx.fillStyle = "#4a3a2a";
-    ctx.fillRect(385, 245, 70, 130);
-    ctx.fillStyle = "#2a1a0a";
-    ctx.fillRect(390, 250, 60, 120);
-
-    // Panele na drzwiach
-    ctx.fillStyle = "#1a0a00";
-    ctx.fillRect(395, 260, 25, 35);
-    ctx.fillRect(425, 260, 20, 35);
-    ctx.fillRect(395, 310, 25, 35);
-    ctx.fillRect(425, 310, 20, 35);
-
-    // Ramki paneli
-    ctx.strokeStyle = "#0a0a0a";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(395, 260, 25, 35);
-    ctx.strokeRect(425, 260, 20, 35);
-    ctx.strokeRect(395, 310, 25, 35);
-    ctx.strokeRect(425, 310, 20, 35);
-
-    // Klamka
-    ctx.fillStyle = "#8a7a5a";
-    ctx.fillRect(440, 325, 6, 8);
-
-    // Schody
-    ctx.fillStyle = "#3a3a3a";
-    ctx.fillRect(385, 370, 70, 8);
-    ctx.fillRect(390, 378, 60, 8);
-    ctx.fillRect(395, 386, 50, 8);
-
-    // Domofon obok drzwi
-    ctx.fillStyle = "#4a4a4a";
-    ctx.fillRect(475, 290, 25, 40);
-    ctx.fillStyle = "#2a2a2a";
-    ctx.fillRect(477, 292, 21, 36);
-    ctx.fillStyle = "#6a6a6a";
-    ctx.fillRect(482, 305, 11, 8);
-    ctx.fillStyle = "#8a8a8a";
-    ctx.fillRect(484, 307, 2, 1);
-    ctx.fillRect(487, 307, 2, 1);
-    ctx.fillRect(490, 307, 2, 1);
-  }
-
-  drawSewerGrate() {
-    const grateX = 350,
-      grateY = 450;
-
-    // Podstawa kratki - betonowa ramka (wytarta)
-    ctx.fillStyle = "#3a3a3a";
-    ctx.fillRect(grateX + 10, grateY + 20, 80, 80);
-
-    // Wewnętrzna część kratki (głęboka)
-    ctx.fillStyle = "#0a0a0a";
-    ctx.fillRect(grateX + 15, grateY + 25, 70, 70);
-
-    // Cienie w głębi
-    ctx.fillStyle = "#050505";
-    ctx.fillRect(grateX + 20, grateY + 30, 60, 60);
-
-    // Kratka - pionowe pręty (metalowe, rdzawe)
-    for (let i = 0; i < 6; i++) {
-      ctx.fillStyle = "#4a4a4a";
-      ctx.fillRect(grateX + 20 + i * 10, grateY + 25, 3, 70);
-      // Rdza na prętach
-      ctx.fillStyle = "#6a3a1a";
-      ctx.fillRect(grateX + 20 + i * 10, grateY + 30 + i * 8, 3, 4);
-      ctx.fillRect(grateX + 20 + i * 10, grateY + 50 + i * 5, 1, 8);
-    }
-
-    // Kratka - poziome pręty
-    for (let i = 0; i < 6; i++) {
-      ctx.fillStyle = "#4a4a4a";
-      ctx.fillRect(grateX + 15, grateY + 30 + i * 10, 70, 3);
-      // Rdza na poziomych prętach
-      ctx.fillStyle = "#6a3a1a";
-      ctx.fillRect(grateX + 25 + i * 7, grateY + 30 + i * 10, 6, 3);
-      ctx.fillRect(grateX + 45 + i * 4, grateY + 30 + i * 10, 4, 1);
-    }
-
-    // Śruby w rogach (stare, zardzewiałe)
-    ctx.fillStyle = "#5a5a5a";
-    ctx.fillRect(grateX + 12, grateY + 22, 4, 4);
-    ctx.fillRect(grateX + 84, grateY + 22, 4, 4);
-    ctx.fillRect(grateX + 12, grateY + 94, 4, 4);
-    ctx.fillRect(grateX + 84, grateY + 94, 4, 4);
-
-    // Rdza na śrubach
-    ctx.fillStyle = "#5a2a0a";
-    ctx.fillRect(grateX + 13, grateY + 23, 2, 2);
-    ctx.fillRect(grateX + 85, grateY + 23, 2, 2);
-    ctx.fillRect(grateX + 13, grateY + 95, 2, 2);
-    ctx.fillRect(grateX + 85, grateY + 95, 2, 2);
-
-    // Kłódka na kratce (jeśli nie została otwarta)
-    if (!gameState.wellOpened) {
-      // Łańcuch przez kratkę
-      ctx.fillStyle = "#3a3a3a";
-      ctx.fillRect(grateX + 35, grateY + 45, 30, 3);
-      ctx.fillRect(grateX + 35, grateY + 65, 30, 3);
-
-      // Ogniwa łańcucha
-      for (let i = 0; i < 6; i++) {
-        ctx.strokeStyle = "#2a2a2a";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(grateX + 37 + i * 5, grateY + 44, 3, 5);
-        ctx.strokeRect(grateX + 37 + i * 5, grateY + 64, 3, 5);
-      }
-
-      // Kłódka (solidna, stara)
-      ctx.fillStyle = "#4a4a2a";
-      ctx.fillRect(grateX + 40, grateY + 50, 20, 15);
-
-      // Ramka kłódki
-      ctx.strokeStyle = "#6a6a4a";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(grateX + 40, grateY + 50, 20, 15);
-
-      // Ucho kłódki
-      ctx.strokeStyle = "#5a5a3a";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(grateX + 50, grateY + 48, 8, Math.PI, 0);
-      ctx.stroke();
-
-      // Dziurka na klucz
-      ctx.fillStyle = "#1a1a1a";
-      ctx.fillRect(grateX + 48, grateY + 55, 4, 6);
-
-      // Napis na kłódce
-      ctx.fillStyle = "#6a6a6a";
-      ctx.font = "8px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText("1947", grateX + 50, grateY + 62);
-
-      // Rdza na kłódce
-      ctx.fillStyle = "#5a2a0a";
-      ctx.fillRect(grateX + 42, grateY + 52, 3, 2);
-      ctx.fillRect(grateX + 55, grateY + 58, 2, 3);
-    }
-
-    // Cień kratki na ziemi
-    ctx.fillStyle = "rgba(0,0,0,0.3)";
-    ctx.fillRect(grateX + 92, grateY + 25, 8, 80);
-    ctx.fillRect(grateX + 15, grateY + 102, 80, 8);
-
-    // Mech i brud wokół kratki
-    ctx.fillStyle = "#2a3a1a";
-    ctx.fillRect(grateX + 8, grateY + 18, 3, 2);
-    ctx.fillRect(grateX + 85, grateY + 95, 4, 3);
-    ctx.fillRect(grateX + 12, grateY + 100, 2, 2);
-  }
-
-  drawSpade() {
-    const spadeX = 320,
-      spadeY = 480;
-
-    // Trzonek łopatki (drewniany, wytarty)
-    ctx.fillStyle = "#8a6a4a";
-    ctx.fillRect(spadeX + 10, spadeY, 4, 35);
-
-    // Słoje drewna
-    ctx.fillStyle = "#7a5a3a";
-    ctx.fillRect(spadeX + 10, spadeY + 5, 4, 1);
-    ctx.fillRect(spadeX + 10, spadeY + 12, 4, 1);
-    ctx.fillRect(spadeX + 10, spadeY + 20, 4, 1);
-    ctx.fillRect(spadeX + 10, spadeY + 28, 4, 1);
-
-    // Wytarcia na trzonku
-    ctx.fillStyle = "#6a4a2a";
-    ctx.fillRect(spadeX + 11, spadeY + 8, 2, 8);
-    ctx.fillRect(spadeX + 11, spadeY + 18, 2, 6);
-
-    // Metalowa część (żelazna, używana)
-    ctx.fillStyle = "#5a5a5a";
-    ctx.fillRect(spadeX + 6, spadeY + 30, 12, 8);
-
-    // Odblaski na metalu
-    ctx.fillStyle = "#7a7a7a";
-    ctx.fillRect(spadeX + 7, spadeY + 31, 2, 1);
-    ctx.fillRect(spadeX + 15, spadeY + 33, 2, 1);
-
-    // Rdza na metalu
-    ctx.fillStyle = "#5a2a0a";
-    ctx.fillRect(spadeX + 6, spadeY + 35, 2, 2);
-    ctx.fillRect(spadeX + 16, spadeY + 32, 1, 3);
-
-    // Krawędź robocza (ostra)
-    ctx.fillStyle = "#4a4a4a";
-    ctx.fillRect(spadeX + 7, spadeY + 37, 10, 1);
-
-    // Uchwyt (owinięty sznurkiem)
-    ctx.fillStyle = "#6a4a2a";
-    ctx.fillRect(spadeX + 8, spadeY - 2, 8, 6);
-
-    // Owinięcie sznurkiem
-    ctx.fillStyle = "#5a3a1a";
-    ctx.fillRect(spadeX + 8, spadeY - 1, 8, 1);
-    ctx.fillRect(spadeX + 8, spadeY + 1, 8, 1);
-    ctx.fillRect(spadeX + 8, spadeY + 3, 8, 1);
-
-    // Końcówka sznurka
-    ctx.fillStyle = "#4a2a0a";
-    ctx.fillRect(spadeX + 16, spadeY + 2, 2, 2);
-
-    // Cień łopatki
-    ctx.fillStyle = "rgba(0,0,0,0.3)";
-    ctx.fillRect(spadeX + 15, spadeY + 5, 3, 30);
-    ctx.fillRect(spadeX + 19, spadeY + 32, 3, 6);
-
-    // Ziemia na łopatce (używana)
-    ctx.fillStyle = "#3a2a1a";
-    ctx.fillRect(spadeX + 8, spadeY + 34, 3, 2);
-    ctx.fillRect(spadeX + 14, spadeY + 35, 2, 1);
-  }
-
-  drawBushes() {
-    // Krzak pierwszy (po prawej stronie) - przesunięty na dół
-    const bush1X = 580,
-      bush1Y = 520;
-
-    // Główna masa krzaka
-    ctx.fillStyle = "#2a4a1a";
-    ctx.beginPath();
-    ctx.ellipse(bush1X + 15, bush1Y + 15, 18, 12, 0, 0, 2 * Math.PI);
-    ctx.fill();
-
-    // Dodatkowe kule liści
-    ctx.fillStyle = "#3a5a2a";
-    ctx.beginPath();
-    ctx.ellipse(bush1X + 8, bush1Y + 12, 8, 6, 0, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(bush1X + 22, bush1Y + 18, 10, 8, 0, 0, 2 * Math.PI);
-    ctx.fill();
-
-    // Krzak drugi (większy, dalej) - przesunięty na dół
-    const bush2X = 620,
-      bush2Y = 530;
-    ctx.fillStyle = "#2a4a1a";
-    ctx.beginPath();
-    ctx.ellipse(bush2X + 20, bush2Y + 12, 22, 15, 0, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.fillStyle = "#3a5a2a";
-    ctx.beginPath();
-    ctx.ellipse(bush2X + 10, bush2Y + 8, 12, 8, 0, 0, 2 * Math.PI);
-    ctx.fill();
-
-    // Małe krzaczki przy głównych - przesunięte na dół
-    const smallBushX = 600,
-      smallBushY = 540;
-    ctx.fillStyle = "#2a3a1a";
-    ctx.beginPath();
-    ctx.ellipse(smallBushX + 8, smallBushY + 6, 8, 5, 0, 0, 2 * Math.PI);
-    ctx.fill();
-
-    // Kopczyk ziemi przy krzakach (drugi kopczyk) - przesunięty na dół
-    if (!gameState.hasBone) {
-      const mound2X = 650,
-        mound2Y = 560;
-      ctx.fillStyle = "#4a3a2a";
-      ctx.beginPath();
-      ctx.ellipse(mound2X + 8, mound2Y + 6, 8, 5, 0, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.fillStyle = "#5a4a3a";
-      ctx.beginPath();
-      ctx.ellipse(mound2X + 8, mound2Y + 4, 5, 3, 0, 0, 2 * Math.PI);
-      ctx.fill();
-
-      // Grudki przy drugim kopczyku
-      ctx.fillStyle = "#3a2a1a";
-      ctx.fillRect(mound2X + 5, mound2Y + 8, 2, 1);
-      ctx.fillRect(mound2X + 12, mound2Y + 9, 2, 1);
-      ctx.fillRect(mound2X + 3, mound2Y + 7, 1, 1);
-    }
-
-    // Kość - jeśli została wykopana i jest widoczna - przesunięta na dół
-    if (gameState.hasBone && gameState.boneVisible) {
-      const boneX = 655,
-        boneY = 565;
-
-      // Główna część kości
-      ctx.fillStyle = "#eaeaea";
-      ctx.fillRect(boneX, boneY, 12, 4);
-
-      // Końcówki kości (kuliste)
-      ctx.fillStyle = "#f0f0f0";
-      ctx.beginPath();
-      ctx.arc(boneX + 1, boneY + 2, 3, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(boneX + 11, boneY + 2, 3, 0, 2 * Math.PI);
-      ctx.fill();
-
-      // Szczegóły kości (pęknięcia)
-      ctx.fillStyle = "#d0d0d0";
-      ctx.fillRect(boneX + 3, boneY + 1, 1, 1);
-      ctx.fillRect(boneX + 7, boneY + 3, 1, 1);
-      ctx.fillRect(boneX + 9, boneY + 1, 1, 1);
-
-      // Cień kości
-      ctx.fillStyle = "rgba(0,0,0,0.2)";
-      ctx.fillRect(boneX + 1, boneY + 5, 10, 2);
-    }
-  }
-
-  drawJanitor(x, y) {
-    // Buty robocze
-    ctx.fillStyle = "#1a1a1a";
-    ctx.fillRect(x + 14, y + 118, 8, 6);
-    ctx.fillRect(x + 34, y + 118, 8, 6);
-
-    // Nogi w pończochach
-    ctx.fillStyle = "#3a3a4a";
-    ctx.fillRect(x + 16, y + 85, 6, 33);
-    ctx.fillRect(x + 36, y + 85, 6, 33);
-
-    // Spódnica robocza
-    ctx.fillStyle = "#2a2a5a";
-    ctx.fillRect(x + 8, y + 70, 42, 20);
-
-    // Wzór na spódnicy
-    ctx.fillStyle = "#1a1a4a";
-    ctx.fillRect(x + 15, y + 72, 2, 16);
-    ctx.fillRect(x + 25, y + 72, 2, 16);
-    ctx.fillRect(x + 35, y + 72, 2, 16);
-
-    // Tułów w bluzie
-    ctx.fillStyle = "#4a4a6a";
-    ctx.fillRect(x + 12, y + 45, 34, 30);
-
-    // Fartuch roboczy
-    ctx.fillStyle = "#6a6a7a";
-    ctx.fillRect(x + 10, y + 50, 38, 25);
-
-    // Ręce
-    ctx.fillStyle = "#7a6a5a";
-    ctx.fillRect(x + 4, y + 48, 8, 25);
-    ctx.fillRect(x + 46, y + 48, 8, 25);
-
-    // Szyja
-    ctx.fillStyle = "#8a7a6a";
-    ctx.fillRect(x + 22, y + 40, 14, 8);
-
-    // Głowa
-    ctx.fillStyle = "#8a7a6a";
-    ctx.fillRect(x + 18, y + 20, 22, 25);
-
-    // Chustka na głowie
-    ctx.fillStyle = "#6a5a5a";
-    ctx.fillRect(x + 16, y + 20, 26, 12);
-
-    // Kropki na chustce
-    ctx.fillStyle = "#7a6a6a";
-    ctx.fillRect(x + 18, y + 22, 2, 2);
-    ctx.fillRect(x + 24, y + 24, 2, 2);
-    ctx.fillRect(x + 30, y + 22, 2, 2);
-
-    // Oczy
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(x + 22, y + 28, 4, 3);
-    ctx.fillRect(x + 30, y + 28, 4, 3);
-    ctx.fillStyle = "#2a2a2a";
-    ctx.fillRect(x + 23, y + 29, 2, 2);
-    ctx.fillRect(x + 31, y + 29, 2, 2);
-
-    // Nos
-    ctx.fillStyle = "#7a6a5a";
-    ctx.fillRect(x + 27, y + 32, 2, 3);
-
-    // Usta (uśmiech)
-    ctx.fillStyle = "#5a3a3a";
-    ctx.fillRect(x + 26, y + 36, 4, 2);
-
-    // Wiadro
-    ctx.fillStyle = "#8a6a4a";
-    ctx.fillRect(x - 12, y + 88, 16, 20);
-
-    // Woda w wiadrze
-    ctx.fillStyle = "#4a6a8a";
-    ctx.fillRect(x - 10, y + 89, 12, 14);
-
-    // Mop
-    ctx.fillStyle = "#8a6a4a";
-    ctx.fillRect(x + 50, y + 30, 3, 40);
-
-    // Główka mopa
-    ctx.fillStyle = "#6a6a5a";
-    ctx.fillRect(x + 48, y + 26, 7, 8);
-  }
-  drawNeighbor(x, y) {
-    // Buty
-    ctx.fillStyle = "#1a1a1a";
-    ctx.fillRect(x + 14, y + 138, 10, 6);
-    ctx.fillRect(x + 34, y + 138, 10, 6);
-
-    // Spodnie robocze
-    ctx.fillStyle = "#3a3a4a";
-    ctx.fillRect(x + 15, y + 90, 14, 48);
-    ctx.fillRect(x + 35, y + 90, 14, 48);
-
-    // Kurtka robocza
-    ctx.fillStyle = "#4a5a3a";
-    ctx.fillRect(x + 10, y + 45, 45, 50);
-
-    // Ręce
-    ctx.fillStyle = "#7a6a5a";
-    ctx.fillRect(x + 5, y + 50, 10, 30);
-    ctx.fillRect(x + 50, y + 50, 10, 30);
-
-    // Szyja
-    ctx.fillStyle = "#8a7a6a";
-    ctx.fillRect(x + 24, y + 40, 16, 8);
-
-    // Głowa
-    ctx.fillStyle = "#8a7a6a";
-    ctx.fillRect(x + 20, y + 15, 25, 30);
-
-    // Włosy
-    ctx.fillStyle = "#4a3a2a";
-    ctx.fillRect(x + 18, y + 15, 29, 12);
-
-    // Oczy
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(x + 24, y + 25, 4, 3);
-    ctx.fillRect(x + 32, y + 25, 4, 3);
-    ctx.fillStyle = "#2a2a2a";
-    ctx.fillRect(x + 25, y + 26, 2, 2);
-    ctx.fillRect(x + 33, y + 26, 2, 2);
-
-    // Wąsy
-    ctx.fillStyle = "#3a2a1a";
-    ctx.fillRect(x + 26, y + 34, 8, 3);
-
-    // PIES BUREK
-    const dogX = x + 80,
-      dogY = y + 80;
-
-    // Ciało psa
-    ctx.fillStyle = "#4a3a2a";
-    ctx.fillRect(dogX, dogY, 45, 25);
-
-    // Łapy
-    ctx.fillStyle = "#3a2a1a";
-    ctx.fillRect(dogX + 5, dogY + 20, 6, 15);
-    ctx.fillRect(dogX + 15, dogY + 20, 6, 15);
-    ctx.fillRect(dogX + 30, dogY + 20, 6, 15);
-    ctx.fillRect(dogX + 40, dogY + 20, 6, 15);
-
-    // Głowa psa
-    ctx.fillStyle = "#5a4a3a";
-    ctx.fillRect(dogX + 35, dogY - 8, 20, 18);
-
-    // Pysk
-    ctx.fillStyle = "#4a3a2a";
-    ctx.fillRect(dogX + 50, dogY - 5, 8, 10);
-
-    // Nos psa
-    ctx.fillStyle = "#1a1a1a";
-    ctx.fillRect(dogX + 55, dogY - 3, 3, 3);
-
-    // Oczy psa
-    ctx.fillStyle = "#1a1a1a";
-    ctx.fillRect(dogX + 40, dogY - 3, 2, 2);
-    ctx.fillRect(dogX + 46, dogY - 3, 2, 2);
-
-    // Ogon
-    ctx.fillStyle = "#4a3a2a";
-    ctx.fillRect(dogX - 8, dogY + 5, 10, 6);
-  }
-  drawPostman(x, y) {
-    // Buty służbowe
-    ctx.fillStyle = "#1a1a1a";
-    ctx.fillRect(x + 14, y + 123, 10, 6);
-    ctx.fillRect(x + 34, y + 123, 10, 6);
-
-    // Spodnie służbowe (granatowe)
-    ctx.fillStyle = "#2a2a4a";
-    ctx.fillRect(x + 15, y + 80, 14, 43);
-    ctx.fillRect(x + 35, y + 80, 14, 43);
-
-    // Kurtka służbowa
-    ctx.fillStyle = "#3a4a5a";
-    ctx.fillRect(x + 12, y + 45, 41, 40);
-
-    // Guziki (złote)
-    ctx.fillStyle = "#6a6a2a";
-    for (let i = 0; i < 4; i++) {
-      ctx.fillRect(x + 26, y + 50 + i * 8, 3, 3);
-      ctx.fillRect(x + 36, y + 50 + i * 8, 3, 3);
-    }
-
-    // Ręce
-    ctx.fillStyle = "#7a6a5a";
-    ctx.fillRect(x + 5, y + 50, 10, 25);
-    ctx.fillRect(x + 50, y + 50, 10, 25);
-
-    // Szyja
-    ctx.fillStyle = "#8a7a6a";
-    ctx.fillRect(x + 24, y + 40, 16, 8);
-
-    // Głowa
-    ctx.fillStyle = "#8a7a6a";
-    ctx.fillRect(x + 20, y + 15, 25, 30);
-
-    // Czapka służbowa
-    ctx.fillStyle = "#3a4a3a";
-    ctx.fillRect(x + 18, y + 15, 29, 18);
-
-    // Daszek czapki
-    ctx.fillStyle = "#2a3a2a";
-    ctx.fillRect(x + 15, y + 25, 35, 6);
-
-    // Oczy
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(x + 24, y + 28, 4, 3);
-    ctx.fillRect(x + 32, y + 28, 4, 3);
-    ctx.fillStyle = "#2a2a2a";
-    ctx.fillRect(x + 25, y + 29, 2, 2);
-    ctx.fillRect(x + 33, y + 29, 2, 2);
-
-    // Wąsy
-    ctx.fillStyle = "#3a3a2a";
-    ctx.fillRect(x + 26, y + 36, 8, 2);
-
-    // Torba pocztowa
-    ctx.fillStyle = "#6a4a2a";
-    ctx.fillRect(x - 18, y + 50, 22, 30);
-
-    // Listy w ręku
-    ctx.fillStyle = "#eaeaea";
-    ctx.fillRect(x + 52, y + 65, 6, 10);
-    ctx.fillRect(x + 54, y + 63, 6, 10);
-
-    // Znaczki na listach
-    ctx.fillStyle = "#aa2a2a";
-    ctx.fillRect(x + 54, y + 64, 2, 2);
-    ctx.fillRect(x + 57, y + 62, 2, 2);
+    // NARYSUJ INTERAKTYWNE ELEMENTY
+    this.drawSewerGrate(); // Kratka z/bez kłódki
+    this.drawSpade(); // Łopatka (jeśli nie wzięta)
+    this.drawMound(); // Kopczyk ziemi w różnych stanach
+    this.drawBone(); // Kość (jeśli widoczna)
+
+    // Lekkie przyciemnienie dla klimatu
+    ctx.fillStyle = "rgba(20, 20, 30, 0.1)";
+    ctx.fillRect(0, 0, 800, 600);
   }
 }
 class ApartmentScene extends Scene {
@@ -2308,42 +1764,44 @@ class ApartmentScene extends Scene {
     // POPRAWIONE PRECYZYJNE OBSZARY KLIKALNE (dopasowane do rzeczywistego zdjęcia)
 
     // REGAŁ Z KSIĄŻKAMI (lewy górny, książki widoczne)
-    this.addArea(100, 120, 90, 120, () => this.examineBookshelf());
+    this.addArea(110, 120, 110, 150, () => this.examineBookshelf());
 
     // REGAŁ Z SZKŁEM (lewy górny, szkło za szybą)
-    this.addArea(20, 80, 80, 120, () => this.examineGlassCabinet());
+    this.addArea(10, 80, 100, 160, () => this.examineGlassCabinet());
 
     // DOLNE SZAFKI PO LEWEJ (ciemne szafki na dole)
     this.addArea(20, 350, 170, 90, () => this.examineLowerCabinet());
 
-    // TELEWIZOR (czarny ekran w środku)
-    this.addArea(220, 220, 100, 80, () => this.examineTV());
+    // TELEWIZOR (czarny ekran w środku) - PRZESUNIĘTY W PRAWO
+    this.addArea(260, 220, 100, 80, () => this.examineTV());
 
-    // SZAFKA POD TV (brązowa szafka pod telewizorem)
-    this.addArea(220, 300, 100, 70, () => this.examineTVCabinet());
+    // SZAFKA POD TV (brązowa szafka pod telewizorem) - PRZESUNIĘTA W PRAWO
+    this.addArea(280, 350, 100, 70, () => this.examineTVCabinet());
 
-    // STOLICZEK Z KWIATAMI (mały stoliczek z wazonikiem)
-    this.addArea(330, 220, 60, 100, () => this.examineFlowers());
+    // STOLICZEK Z KWIATAMI (mały stoliczek z wazonikiem) - PRZESUNIĘTY W PRAWO
+    this.addArea(380, 220, 60, 100, () => this.examineFlowers());
 
-    // OBRAZ NA ŚCIANIE (haftowany obrazek w ramce)
-    this.addArea(420, 120, 90, 100, () => this.examinePicture());
+    // OBRAZ NA ŚCIANIE (haftowany obrazek w ramce) - PRZESUNIĘTY W PRAWO
+    this.addArea(460, 120, 90, 100, () => this.examinePicture());
 
     // ROŚLINA W DONICZCE (zielona roślina po prawej)
-    this.addArea(520, 200, 70, 130, () => this.examinePlant());
+    this.addArea(560, 180, 70, 130, () => this.examinePlant());
 
     // SOFA/KANAPA (brązowa kanapa po prawej)
     this.addArea(590, 330, 180, 150, () => this.examineSofa());
 
     // LAMPA WISZĄCA (żółta lampa u góry)
-    this.addArea(320, 40, 80, 80, () => this.examineLamp());
+    this.addArea(340, 20, 80, 80, () => this.examineLamp());
 
     // OKNO Z FIRANKAMI (prawa krawędź z firankami)
-    this.addArea(700, 50, 80, 350, () => this.examineWindow());
+    this.addArea(700, 50, 80, 250, () => this.examineWindow());
 
     // WYJŚCIE (prawy dolny róg)
     this.addArea(730, 450, 70, 150, () => {
       showDialog("Wracasz na podwórko...", 2000);
       setTimeout(() => changeScene("courtyard"), 2000);
+
+      this.addArea(400, 60, 50, 50, () => this.clickMoon());
     });
   }
 
@@ -2723,18 +2181,6 @@ class ApartmentScene extends Scene {
     // Dodaj lekkie przyciemnienie dla klimatu
     ctx.fillStyle = "rgba(20, 20, 30, 0.1)";
     ctx.fillRect(0, 0, 800, 600);
-
-    // Rysuj obszary hover dla debugowania (opcjonalne)
-    if (this.hoveredArea) {
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(
-        this.hoveredArea.x,
-        this.hoveredArea.y,
-        this.hoveredArea.w,
-        this.hoveredArea.h
-      );
-    }
   }
 }
 class EndingScene extends Scene {
