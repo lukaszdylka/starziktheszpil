@@ -365,13 +365,17 @@ class Scene {
 // Dodaj to do klasy MenuScene w konstruktorze:
 
 class MenuScene extends Scene {
-constructor() {
+  constructor() {
     super();
     this.animation = 0;
     this.backgroundMusic = new Audio("https://files.catbox.moe/ngqi9t.mp3");
     this.backgroundMusic.loop = true;
     this.backgroundMusic.volume = 0.3;
     this.musicStarted = false;
+
+    // Dźwięk kartki papieru
+    this.paperSound = new Audio("https://files.catbox.moe/h99gh2.mp3");
+    this.paperSound.volume = 0.2;
 
     // NOWY SYSTEM DESZCZU
     this.rainDrops = [];
@@ -392,7 +396,8 @@ constructor() {
       visible: false,
       animation: 0,
       maxAnimation: 60,
-      text: "Rok 2013, Świętochłowice...\nStarzik pakuje ostatnie rzeczy przed wyprowadzką.\n\nCo zostało w jego starym mieszkaniu?\nJakie tajemnice kryje budynek przy Cmentarnej?\n\nRozwiąż zagadkę i odkryj prawdę!",
+      text:
+        "Rok 2013, Świętochłowice...\nStarzik pakuje ostatnie rzeczy przed wyprowadzką.\n\nCo zostało w jego starym mieszkaniu?\nJakie tajemnice kryje budynek przy Cmentarnej?\n\nRozwiąż zagadkę i odkryj prawdę!",
       scale: 0,
       rotation: 0,
       opacity: 0
@@ -419,13 +424,16 @@ constructor() {
   showIntroPaper() {
     this.introPaper.visible = true;
     this.introPaper.animation = 0;
-    
+    this.paperSound
+      .play()
+      .catch((e) => console.log("Nie można odtworzyć dźwięku kartki:", e));
+
     // USUŃ WSZYSTKIE obszary kliknięcia przycisków
-    this.clickAreas = this.clickAreas.filter(area => {
+    this.clickAreas = this.clickAreas.filter((area) => {
       // Zostaw tylko obszar muzyki (jeśli jest)
-      return (area.x === 0 && area.y === 0 && area.w === 800 && area.h === 600);
+      return area.x === 0 && area.y === 0 && area.w === 800 && area.h === 600;
     });
-    
+
     // Dodaj nowy obszar kliknięcia na przycisk "DO GRY" (będzie widoczny po animacji)
     setTimeout(() => {
       // Przycisk na kartce jest w środku ekranu, więc współrzędne to:
@@ -440,14 +448,14 @@ constructor() {
   // NOWA METODA - aktualizacja animacji kartki
   updateIntroPaper() {
     if (!this.introPaper.visible) return;
-    
+
     if (this.introPaper.animation < this.introPaper.maxAnimation) {
       this.introPaper.animation++;
-      
+
       // Easing function dla płynnej animacji
       const progress = this.introPaper.animation / this.introPaper.maxAnimation;
       const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-      
+
       this.introPaper.scale = eased;
       this.introPaper.opacity = eased;
       this.introPaper.rotation = (1 - eased) * 0.3; // Lekka rotacja na początku
@@ -457,38 +465,38 @@ constructor() {
   // NOWA METODA - rysowanie kartki wprowadzającej
   drawIntroPaper() {
     if (!this.introPaper.visible || this.introPaper.opacity <= 0) return;
-    
+
     ctx.save();
-    
+
     // Półprzezroczyste tło
     ctx.globalAlpha = this.introPaper.opacity * 0.8;
-    ctx.fillStyle = 'rgba(20, 22, 34, 0.7)';
+    ctx.fillStyle = "rgba(20, 22, 34, 0.7)";
     ctx.fillRect(0, 0, 800, 600);
-    
+
     // Transformacje kartki
     ctx.translate(400, 300); // Środek ekranu
     ctx.rotate(this.introPaper.rotation);
     ctx.scale(this.introPaper.scale, this.introPaper.scale);
     ctx.globalAlpha = this.introPaper.opacity;
-    
+
     // Cień kartki
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
     ctx.shadowBlur = 20;
     ctx.shadowOffsetX = 8;
     ctx.shadowOffsetY = 8;
-    
+
     // Tło kartki - stary papier
-    ctx.fillStyle = '#F5F1E8';
+    ctx.fillStyle = "#F5F1E8";
     ctx.fillRect(-200, -150, 400, 300);
-    
+
     // Obramowanie kartki
-    ctx.strokeStyle = '#D4C4A8';
+    ctx.strokeStyle = "#D4C4A8";
     ctx.lineWidth = 2;
     ctx.strokeRect(-200, -150, 400, 300);
-    
+
     // Plamy na papierze (efekt starzenia)
     ctx.globalAlpha = this.introPaper.opacity * 0.3;
-    ctx.fillStyle = '#E8D4B0';
+    ctx.fillStyle = "#E8D4B0";
     ctx.beginPath();
     ctx.ellipse(-120, -80, 30, 15, 0.3, 0, 2 * Math.PI);
     ctx.fill();
@@ -498,57 +506,57 @@ constructor() {
     ctx.beginPath();
     ctx.ellipse(-80, 120, 20, 10, 0.5, 0, 2 * Math.PI);
     ctx.fill();
-    
+
     ctx.globalAlpha = this.introPaper.opacity;
-    
+
     // Reset cienia dla tekstu
-    ctx.shadowColor = 'transparent';
+    ctx.shadowColor = "transparent";
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
-    
+
     // Tytuł na kartce
-    ctx.fillStyle = '#2C1810';
-    ctx.font = 'bold 24px serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('STARZIK: PREQUEL', 0, -100);
-    
+    ctx.fillStyle = "#2C1810";
+    ctx.font = "bold 24px serif";
+    ctx.textAlign = "center";
+    ctx.fillText("STARZIK: PREQUEL", 0, -100);
+
     // Linia pod tytułem
-    ctx.strokeStyle = '#8B4513';
+    ctx.strokeStyle = "#8B4513";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(-80, -85);
     ctx.lineTo(80, -85);
     ctx.stroke();
-    
+
     // Tekst główny (podzielony na linie)
-    ctx.font = '14px serif';
-    ctx.fillStyle = '#2C1810';
-    ctx.textAlign = 'center';
-    
-    const lines = this.introPaper.text.split('\n');
+    ctx.font = "14px serif";
+    ctx.fillStyle = "#2C1810";
+    ctx.textAlign = "center";
+
+    const lines = this.introPaper.text.split("\n");
     lines.forEach((line, index) => {
       ctx.fillText(line, 0, -50 + index * 20);
     });
-    
+
     // Przycisk "DO GRY" (pokazuje się po animacji)
     if (this.introPaper.animation >= this.introPaper.maxAnimation) {
-      // Tło przycisku
-      ctx.fillStyle = '#B94E39'; // Ten sam kolor co Twój główny przycisk
+      // Tło przycisku - spójne z głównymi przyciskami
+      ctx.fillStyle = "#2d3748";
       ctx.fillRect(-50, 100, 100, 40);
-      
+
       // Obramowanie przycisku
-      ctx.strokeStyle = '#6a6a8a';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = "#4a5568";
+      ctx.lineWidth = 2;
       ctx.strokeRect(-50, 100, 100, 40);
-      
-      // Tekst przycisku
-      ctx.fillStyle = '#e0e0e0';
-      ctx.font = 'bold 16px serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('DO GRY', 0, 125);
+
+      // Tekst przycisku - biały dla maksymalnej czytelności
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 16px serif";
+      ctx.textAlign = "center";
+      ctx.fillText("DO GRY", 0, 125);
     }
-    
+
     ctx.restore();
   }
 
@@ -873,21 +881,25 @@ constructor() {
     ctx.shadowColor = "rgba(200, 200, 255, 0.8)";
     ctx.shadowBlur = 15;
     ctx.shadowOffsetY = Math.sin(this.animation) * 2;
-    ctx.fillStyle = "#e0e0ff";
+    ctx.fillStyle = "#ffffff"; // Biały tytuł
     ctx.font = "bold 42px Georgia";
     ctx.textAlign = "center";
     ctx.fillText("STARZIK", 400, 160);
 
     ctx.font = "20px Georgia";
-    ctx.fillStyle = "#c0c0d0";
+    ctx.fillStyle = "#cccccc"; // Jasny szary podtytuł
     ctx.fillText("TheSzpil", 400, 190);
     ctx.restore();
 
+    // RESET kolorów przed przyciskami
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#ffffff";
+
     // Pokaż przyciski tylko jeśli kartka nie jest widoczna
     if (!this.introPaper.visible) {
-      this.drawButton(300, 300, 200, 50, "ROZPOCZNIJ GRĘ", "#B94E39");
-      this.drawButton(300, 370, 200, 50, "O GRZE", "#4E342E");
-      this.drawButton(300, 440, 200, 50, "WWW FAMILOCKA", "#6a4a4a");
+      this.drawButton(300, 300, 200, 50, "ROZPOCZNIJ GRĘ", "main");
+      this.drawButton(300, 370, 200, 50, "O GRZE", "secondary");
+      this.drawButton(300, 440, 200, 50, "WWW FAMILOCKA", "secondary");
     }
 
     // NARYSUJ KAŁUŻE NA KOŃCU
@@ -917,28 +929,62 @@ constructor() {
     }
   }
 
-  drawButton(x, y, w, h, text, color) {
-    // Dodaj lekki efekt mokrości na przyciski
+  drawButton(x, y, w, h, text, type) {
     ctx.save();
-    ctx.globalAlpha = 0.9;
 
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = "#6a6a8a";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x, y, w, h);
+    // Sprawdź czy mysz jest nad przyciskiem
+    const isHovered =
+      this.hoveredArea && this.hoveredArea.x === x && this.hoveredArea.y === y;
 
-    // Lekki odbłysk mokrości na górze przycisku
-    if (!this.lightning.active) {
-      ctx.globalAlpha = 0.2;
+    if (type === "main") {
+      // PRZYCISK GŁÓWNY - prosty i czytelny
+      if (isHovered) {
+        // Hover: jaśniejszy z ciepłym akcentem
+        ctx.fillStyle = "#4a5568";
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = "#ed8936"; // Ciepły pomarańczowy
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+      } else {
+        // Normalny: ciemny ale nie za bardzo
+        ctx.fillStyle = "#2d3748";
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = "#4a5568";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+      }
+      // Tekst zawsze jasny i czytelny
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(x + 5, y + 5, w - 10, 8);
+    } else {
+      // PRZYCISKI DRUGORZĘDNE - jeszcze prostsze
+      if (isHovered) {
+        ctx.fillStyle = "#3a4555";
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = "#5a6a7a";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, w, h);
+      } else {
+        ctx.fillStyle = "#1a202c";
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = "#2d3748";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, w, h);
+      }
+      // Tekst jaśniejszy przy hover
+      ctx.fillStyle = isHovered ? "#ffffff" : "#cbd5e0";
+    }
+
+    // Lekki efekt mokrości na górze przycisku
+    if (!this.lightning.active) {
+      ctx.globalAlpha = 0.1;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x + 5, y + 5, w - 10, 6);
     }
 
     ctx.restore();
 
-    ctx.fillStyle = "#e0e0e0";
-    ctx.font = "16px Georgia";
+    // Tekst przycisku - bold dla lepszej czytelności
+    ctx.font = "bold 16px Georgia";
     ctx.textAlign = "center";
     ctx.fillText(text, x + w / 2, y + h / 2 + 5);
   }
