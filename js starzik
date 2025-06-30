@@ -36,7 +36,7 @@ const preloadImages = {
   apartment: new Image()
 };
 
-preloadImages.courtyard.src = "https://i.imgur.com/i95HMrD.png";
+preloadImages.courtyard.src = "https://i.imgur.com/o0r1Gow.png";
 preloadImages.apartment.src = "https://i.imgur.com/CcmvRTN.jpeg";
 
 // Zacznij ładowanie od razu
@@ -494,12 +494,15 @@ class MenuScene extends Scene {
     this.musicStarted = false;
     this.paperSound = new Audio("https://files.catbox.moe/h99gh2.mp3");
     this.paperSound.volume = 1;
+    // DRUGI DŹWIĘK - NOWY
+    this.secondSound = new Audio("https://files.catbox.moe/mlr9a3.mp3");
+    this.secondSound.volume = 0.8;
 
     // NOWY SYSTEM DESZCZU
     this.rainDrops = [];
     this.initRain();
     // Dźwięk księżyca
-    this.moonSound = new Audio("https://files.catbox.moe/hc89rk.mp3");
+    this.moonSound = new Audio("https://files.catbox.moe/q9a53b.mp3");
     this.moonSound.volume = 0.7;
 
     // SYSTEM BŁYSKAWIC
@@ -518,10 +521,12 @@ class MenuScene extends Scene {
       animation: 0,
       maxAnimation: 60,
       text:
-        "Rok 2013, Świętochłowice...\nStarzik pakuje ostatnie rzeczy przed wyprowadzką.\n\nCo zostało w jego starym mieszkaniu?\nJakie tajemnice kryje budynek przy Cmentarnej?\n\nRozwiąż zagadkę i odkryj prawdę!",
+        "Rok 2013.\nStarzik Józef niespodziewanie pojawia się przed familokiem\nprzy ulicy Cmentarnej 5.\nDlaczego tu się w ogóle pojawił i jakie są jego dalsze plany?",
       scale: 0,
       rotation: 0,
-      opacity: 0
+      opacity: 0,
+      showButton: false,
+      secondSoundPlayed: false
     };
 
     // Obszar kliknięcia na całe menu do uruchomienia muzyki
@@ -579,27 +584,42 @@ class MenuScene extends Scene {
     }
   }
   showIntroPaper() {
+    console.log("📄 Pokazuję kartkę wprowadzającą...");
+
+    // Odtwórz pierwszy dźwięk (kartka)
     this.paperSound
       .play()
-      .catch((e) => console.log("Nie można odtworzyć dźwięku kartki:", e));
+      .then(() => console.log("✅ Pierwszy dźwięk (kartka) odtworzony"))
+      .catch((e) => console.log("❌ Nie można odtworzyć dźwięku kartki:", e));
+
     this.introPaper.visible = true;
     this.introPaper.animation = 0;
+    this.introPaper.showButton = false;
+    this.introPaper.secondSoundPlayed = false;
 
     // USUŃ WSZYSTKIE obszary kliknięcia przycisków
     this.clickAreas = this.clickAreas.filter((area) => {
-      // Zostaw tylko obszar muzyki (jeśli jest)
       return area.x === 0 && area.y === 0 && area.w === 800 && area.h === 600;
     });
 
-    // Dodaj nowy obszar kliknięcia na przycisk "DO GRY" (będzie widoczny po animacji)
+    // Zaplanuj odtworzenie drugiego dźwięku po 2.5 sekundach
     setTimeout(() => {
-      // Przycisk na kartce jest w środku ekranu, więc współrzędne to:
-      // Środek ekranu (400) minus połowa szerokości przycisku (50) = 350
-      // Pozycja Y: 400 (środek kartki transformowanej)
-      this.addArea(350, 400, 100, 40, () => {
-        changeScene("courtyard");
-      });
-    }, 1000); // Czeka sekundę na zakończenie animacji
+      console.log("🎵 Odtwarzam drugi dźwięk...");
+
+      this.secondSound
+        .play()
+        .then(() => {
+          console.log("✅ Drugi dźwięk odtworzony!");
+          this.introPaper.secondSoundPlayed = true;
+
+          // Pokaż przycisk po kolejnej sekundzie
+          setTimeout(() => {
+            this.introPaper.showButton = true;
+            this.addArea(350, 400, 100, 40, () => changeScene("courtyard"));
+          }, 1000);
+        })
+        .catch((e) => console.log("❌ Drugi dźwięk failed:", e));
+    }, 2500);
   }
 
   // NOWA METODA - aktualizacja animacji kartki
@@ -1176,15 +1196,17 @@ class CourtyardScene extends Scene {
     this.initRain();
 
     // Dźwięk księżyca
-    this.moonSound = new Audio("https://files.catbox.moe/hc89rk.mp3");
+    this.moonSound = new Audio("https://files.catbox.moe/q9a53b.mp3");
     this.moonSound.volume = 0.7;
+
+    // NOWY DŹWIĘK PSA
+    this.dogSound = new Audio("https://files.catbox.moe/7s8f1a.mp3");
+    this.dogSound.volume = 0.8;
   }
 
   setupAreas() {
-    // DOPRECYZOWANE OBSZARY KLIKALNE (na podstawie screenshotu)
-
-    // KRATKA KANALIZACYJNA (środek, na dole)
-    this.addArea(320, 450, 100, 80, () => {
+    // KRATKA KANALIZACYJNA (środek, na dole) - STREFA 0
+    this.addArea(360, 470, 80, 80, () => {
       if (gameState.wellOpened) {
         showDialog("Kratka kanalizacyjna jest już otwarta.");
       } else {
@@ -1192,8 +1214,8 @@ class CourtyardScene extends Scene {
       }
     });
 
-    // ŁOPATKA (mała, przy kratce - czerwona ramka widoczna)
-    this.addArea(320, 490, 20, 35, () => {
+    // ŁOPATKA (mała, przy kratce) - STREFA 1 - OK
+    this.addArea(320, 490, 20, 30, () => {
       if (!gameState.hasSpade) {
         addItem("Łopatka");
         gameState.hasSpade = true;
@@ -1203,7 +1225,7 @@ class CourtyardScene extends Scene {
       }
     });
 
-    // KOPCZYK ZIEMI (prawy dolny róg - zielone krzaki)
+    // KOPCZYK ZIEMI (prawy dolny róg) - STREFA 2 - OK
     this.addArea(650, 560, 20, 15, () => {
       if (gameState.hasBone) {
         if (gameState.boneVisible) {
@@ -1231,20 +1253,11 @@ class CourtyardScene extends Scene {
       });
     }
 
-    // PANI SPRZĄTAJĄCA (lewa postać)
-    this.addArea(80, 350, 80, 120, () => this.talkToJanitor());
+    // PANI SPRZĄTAJĄCA (lewa postać) - STREFA 3 - POPRAWKA
+    this.addArea(70, 375, 75, 130, () => this.talkToJanitor());
 
-    // LISTONOSZ (środkowa postać)
-    this.addArea(380, 300, 70, 120, () => this.talkToPostman());
-
-    // PAN KOWALSKI Z PSEM (prawa postać)
-    this.addArea(550, 320, 120, 150, () => this.talkToNeighbor());
-
-    // DOMOFON (mały czerwony prostokąt przy drzwiach)
-    this.addArea(475, 290, 25, 40, () => showIntercomKeypad());
-
-    // DRZWI BUDYNKU (czerwona ramka przy "CMENTARNA 5")
-    this.addArea(390, 250, 60, 120, () => {
+    // DRZWI BUDYNKU - STREFA 4 - POPRAWKA (szersze, obejmuje całe drzwi)
+    this.addArea(370, 280, 80, 140, () => {
       if (gameState.intercomUnlocked) {
         changeScene("apartment");
       } else {
@@ -1252,8 +1265,20 @@ class CourtyardScene extends Scene {
       }
     });
 
-    // KSIĘŻYC (jasne koło u góry)
-    this.addArea(375, 35, 50, 50, () => this.clickMoon());
+    // PAN KOWALSKI Z PSEM (prawa postać) - STREFA 5 - POPRAWKA
+    this.addArea(550, 330, 70, 180, () => this.talkToNeighbor());
+
+    // DOMOFON - STREFA 6 - POPRAWKA (mniejszy, precyzyjniej)
+    this.addArea(470, 320, 30, 50, () => showIntercomKeypad());
+
+    // LISTONOSZ (środkowa postać) - POPRAWKA (lepsze dopasowanie)
+    this.addArea(230, 375, 80, 140, () => this.talkToPostman());
+
+    // KSIĘŻYC (jasne koło u góry) - POPRAWKA (według screenshota)
+    this.addArea(360, 45, 70, 60, () => this.clickMoon());
+
+    // PIES BUREK (przy Panu Kowalskim)
+    this.addArea(460, 480, 70, 40, () => this.clickDog());
   }
 
   // SYSTEM DESZCZU (podobny jak w menu, ale subtelniejszy)
@@ -1446,7 +1471,7 @@ class CourtyardScene extends Scene {
     ctx.fillRect(boneX + 9, boneY + 1, 1, 1);
   }
 
-  // DIALOGI Z POSTACIAMI (bez zmian)
+  // DIALOGI Z POSTACIAMI
   talkToJanitor() {
     if (gameState.gotCode) {
       showDialog(
@@ -1702,18 +1727,31 @@ class CourtyardScene extends Scene {
     }
   }
 
-  // NOWA METODA - kliknięcie księżyca
+  // METODA KLIKNIĘCIA KSIĘŻYCA
   clickMoon() {
     this.moonSound
       .play()
       .catch((e) => console.log("Nie można odtworzyć dźwięku księżyca:", e));
     showDialog("Księżyc świeci tajemniczo nad Świętochłowicami...", 3000);
   }
+  clickDog() {
+    console.log("🐕 Kliknięto w psa Burka");
+
+    if (this.dogSound) {
+      this.dogSound.currentTime = 0;
+      this.dogSound
+        .play()
+        .then(() => console.log("✅ Burek szczeka!"))
+        .catch((e) => console.log("❌ Dog sound failed:", e));
+    }
+
+    showDialog("Burek szczeka.", 3000);
+  }
 
   render() {
     // NOWE TŁO Z BUDYNKAMI I POSTACIAMI
     const img = new Image();
-    img.src = "https://i.imgur.com/i95HMrD.png";
+    img.src = "https://i.imgur.com/o0r1Gow.png";
     if (img.complete) {
       ctx.drawImage(img, 0, 0, 800, 600);
     } else {
@@ -1735,6 +1773,26 @@ class CourtyardScene extends Scene {
     // Lekkie przyciemnienie dla klimatu
     ctx.fillStyle = "rgba(20, 20, 30, 0.1)";
     ctx.fillRect(0, 0, 800, 600);
+    // DEBUG: Czerwone ramki stref klikalnych
+    if (true) {
+      // Zmień na false aby wyłączyć
+      ctx.save();
+      ctx.strokeStyle = "#ff0000";
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.6;
+
+      for (let area of this.clickAreas) {
+        ctx.strokeRect(area.x, area.y, area.w, area.h);
+
+        // Etykiety obszarów
+        ctx.fillStyle = "#ffff00";
+        ctx.font = "11px Arial";
+        ctx.textAlign = "left";
+        const index = this.clickAreas.indexOf(area);
+        ctx.fillText(`${index}`, area.x + 2, area.y + 13);
+      }
+      ctx.restore();
+    }
   }
 }
 class ApartmentScene extends Scene {
@@ -2271,7 +2329,6 @@ function gameLoop() {
     }, 1000);
   }
 }
-
 document.addEventListener("DOMContentLoaded", function () {
   console.log("DOM loaded, starting game initialization...");
   setTimeout(() => {
