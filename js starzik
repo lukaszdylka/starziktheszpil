@@ -6,6 +6,7 @@ const itemIcons = {
   Łopatka: "⛏️",
   Kość: "🦴",
   "Dowód osobisty": "🪪",
+  "Mały kluczyk": "🔑", // NOWE
   List: "✉️",
   "Stary klucz": "🗝️",
   Pamiętnik: "📔",
@@ -21,23 +22,31 @@ function log(message) {
 }
 
 function checkIntercomCodeDirect(code) {
-  if (code === "1015") {
+  hideCodeInput();
+
+  if (code === "8802") {
     gameState.intercomUnlocked = true;
-    hideCodeInput();
     showDialog("Domofon wydaje dźwięk i drzwi się otwierają!", 3000);
   } else {
-    hideCodeInput();
-    showDialog("Nieprawidłowy kod. Sprawdź wskazówki w liście.", 3000);
+    showDialog("Nieprawidłowy kod do domofonu.", 3000);
   }
 }
 // PRELOAD OBRAZÓW
 const preloadImages = {
   courtyard: new Image(),
-  apartment: new Image()
+  courtyardOpen: new Image(),
+  apartment: new Image(),
+  keyWithCode: new Image(),
+  letter: new Image(),
+  staircase: new Image()
 };
 
 preloadImages.courtyard.src = "https://i.imgur.com/o0r1Gow.png";
+preloadImages.courtyardOpen.src = "https://i.imgur.com/JQgnss8.png";
 preloadImages.apartment.src = "https://i.imgur.com/CcmvRTN.jpeg";
+preloadImages.keyWithCode.src = "https://i.imgur.com/RlK3rAq.png";
+preloadImages.letter.src = "https://i.imgur.com/WpYLQLB.png";
+preloadImages.staircase.src = "https://i.imgur.com/7HN1h8Z.png";
 
 // Zacznij ładowanie od razu
 preloadImages.courtyard.onload = () => console.log("Podwórko załadowane!");
@@ -63,19 +72,22 @@ function initGame() {
       hasBone: false,
       boneVisible: false,
       gaveBone: false,
-      gotInfo: false,
-      gotCode: false,
+      gotInfoFromKowalski: false, // NOWE - czy rozmawiał z Kowalskim po kości
+      askedAboutWindows: false, // NOWE - czy pytał sprzątaczkę o okna
       wellOpened: false,
       hasID: false,
+      hasSmallKey: false, // NOWE - mały kluczyk z kratki
       gotLetter: false,
+      askedAboutIntercomCode: false, // NOWE - czy pytał o kod do domofonu
+      readLetter: false,
       canEnter: false,
-      intercomUnlocked: false,
-      hasIntercomCode: false
+      intercomUnlocked: false
     };
 
     scenes = {
       menu: new MenuScene(),
       courtyard: new CourtyardScene(),
+      staircase: new StaircaseScene(),
       apartment: new ApartmentScene(),
       ending: new EndingScene()
     };
@@ -148,7 +160,8 @@ function showDialogWithOptions(text, options, npcName = "") {
       (opt) =>
         opt.text.includes("Miłego") ||
         opt.text.includes("Dziękuję") ||
-        opt.text.includes("Pa")
+        opt.text.includes("Pa") ||
+        opt.text.includes("Zakończ")
     )
   ) {
     html += `<div class="dialog-option" onclick="hideDialog()" style="background: rgba(80,80,80,0.3); margin-top: 8px;">← Zakończ rozmowę</div>`;
@@ -220,8 +233,13 @@ function updateInventoryDisplay() {
 
 function useItem(item) {
   if (item === "List") {
-    gameState.hasIntercomCode = true;
     showLetterContent();
+  } else if (item === "Mały kluczyk") {
+    if (gameState.askedAboutIntercomCode) {
+      showKeyWithCode();
+    } else {
+      showDialog("To mały kluczyk. Może ktoś wie, do czego służy?", 2000);
+    }
   } else if (item === "Kartka z kodem") {
     showCodeCard();
   } else if (item === "Pamiętnik") {
@@ -331,36 +349,34 @@ function showDocuments() {
   showDialog(documentsContent, 0);
 }
 function showLetterContent() {
+  gameState.readLetter = true; // Ustaw flagę, że list został przeczytany
+
   const letterContent = `
-        <div style="background: #f5f5f5; color: #333; padding: 15px; border-radius: 5px; margin: 10px 0;">
-            <div style="text-align: center; margin-bottom: 10px; font-weight: bold;">
-                📮 POCZTA POLSKA 📮
-            </div>
-            <div style="margin-bottom: 15px;">
-                <strong>Do:</strong> Józef Dyłka<br>
-                <strong>Od:</strong> Urząd Miasta Świętochłowice<br>
-                <strong>Data:</strong> 15 października 2013
-            </div>
-            <div style="border-top: 1px solid #ccc; padding-top: 10px;">
-                <p><strong>Szanowny Panie Józefie,</strong></p>
-                <p>Informujemy, że w związku z planowaną rozbiórką budynku przy ulicy Cmentarnej,
-                prosimo o opuszczenie lokalu do dnia 30. października 2013 roku.</p>
-                <p>Szczegóły dotyczące przeprowadzki znajdzie Pan w swoim mieszkaniu.</p>
-                <p style="margin-top: 15px;">
-                    <em>Z poważaniem,<br>
-                    Urząd Miasta</em>
-                </p>
-            </div>
-        </div>
-        <div style="text-align: center; margin-top: 10px;">
-            <button onclick="hideDialog()" style="padding: 8px 16px; background: #555; color: #ddd; border: 1px solid #666; border-radius: 4px; cursor: pointer;">
-                Zamknij list
-            </button>
-        </div>
-    `;
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;">
+      <img src="https://i.imgur.com/WpYLQLB.png" style="max-width: 90vw; max-height: 80vh; display: block;" alt="List od Zarządu Budynku">
+      <div style="text-align: center; margin-top: 15px;">
+        <button onclick="hideDialog()" style="padding: 10px 20px; background: #d4af37; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+          ZAMKNIJ
+        </button>
+      </div>
+    </div>
+  `;
   showDialog(letterContent, 0);
 }
-
+function showKeyWithCode() {
+  const keyContent = `
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;">
+      <img src="https://i.imgur.com/RlK3rAq.png" style="max-width: 90vw; max-height: 80vh; display: block;" alt="Kluczyk z kodem">
+      <div style="text-align: center; margin-top: 15px;">
+        <button onclick="hideDialog()" style="padding: 10px 20px; background: #d4af37; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+          ZAMKNIJ
+        </button>
+      </div>
+    </div>
+  `;
+  showDialog(keyContent, 0);
+  gameState.readLetter = true;
+}
 function showCodeInput() {
   hideDialog();
   document.getElementById("codeInput").style.display = "block";
@@ -397,26 +413,20 @@ function showIntercomKeypad() {
 }
 
 function checkCodeDirect(code) {
-  if (code === "1947") {
+  hideCodeInput();
+
+  if (code === "324") {
     gameState.wellOpened = true;
     addItem("Dowód osobisty");
+    addItem("Mały kluczyk");
     gameState.hasID = true;
+    gameState.hasSmallKey = true;
     showDialog(
-      "Udało się! W kratce kanalizacyjnej był Twój stary dowód osobisty.",
+      "Udało się! Kratka kanalizacyjna się otworzyła! W środku był Twój stary dowód osobisty i mały kluczyk.",
       4000
     );
   } else {
-    if (gameState.gotCode) {
-      showDialog(
-        "Nieprawidłowy kod. Spróbuj ponownie. Wskazówka: tuż po wojnie, miała 22 lata...",
-        4000
-      );
-    } else {
-      showDialog(
-        "Nieprawidłowy kod. Może potrzebujesz więcej informacji?",
-        3000
-      );
-    }
+    showDialog("Nieprawidłowy kod. Może potrzebujesz więcej wskazówek?", 3000);
   }
 }
 
@@ -495,7 +505,7 @@ class MenuScene extends Scene {
     this.paperSound = new Audio("https://files.catbox.moe/h99gh2.mp3");
     this.paperSound.volume = 1;
     // DRUGI DŹWIĘK - NOWY
-    this.secondSound = new Audio("https://files.catbox.moe/mlr9a3.mp3");
+    this.secondSound = new Audio("https://files.catbox.moe/qoxae0.mp3");
     this.secondSound.volume = 0.8;
 
     // NOWY SYSTEM DESZCZU
@@ -521,7 +531,7 @@ class MenuScene extends Scene {
       animation: 0,
       maxAnimation: 60,
       text:
-        "Rok 2013.\nStarzik Józef niespodziewanie pojawia się przed familokiem\nprzy ulicy Cmentarnej 5.\nDlaczego tu się w ogóle pojawił i jakie są jego dalsze plany?",
+        "Rok 1988.\nStarzik Józef niespodziewanie pojawia się\nprzed familokiem przy ulicy Cmentarnej 5.\nCo ...lub kto go tutaj sprowadził i jakie są jego dalsze plany?",
       scale: 0,
       rotation: 0,
       opacity: 0,
@@ -1186,6 +1196,7 @@ class MenuScene extends Scene {
     ctx.fillText(text, x + w / 2, y + h / 2 + 5);
   }
 } // ← ZAMYKA KLASĘ MenuScene
+
 class CourtyardScene extends Scene {
   constructor() {
     super();
@@ -1259,7 +1270,7 @@ class CourtyardScene extends Scene {
     // DRZWI BUDYNKU - STREFA 4 - POPRAWKA (szersze, obejmuje całe drzwi)
     this.addArea(370, 280, 80, 140, () => {
       if (gameState.intercomUnlocked) {
-        changeScene("apartment");
+        changeScene("staircase");
       } else {
         showDialog("Drzwi są zamknięte. Spróbuj użyć domofonu...");
       }
@@ -1473,84 +1484,107 @@ class CourtyardScene extends Scene {
 
   // DIALOGI Z POSTACIAMI
   talkToJanitor() {
-    if (gameState.gotCode) {
-      showDialog(
-        "Pani sprzątająca: 'Pamiętaj - tuż po wojnie, miałam 22 lata, to był rok wielkiej zmiany!'"
-      );
-    } else if (gameState.gotInfo) {
+    if (gameState.askedAboutIntercomCode && hasItem("Mały kluczyk")) {
       const options = [
         {
-          text: "Sąsiad mówił, że zna Pani historię kratki...",
+          text: "Znalazłem Pani kluczyk!",
           action: () => {
-            const riddleOptions = [
-              {
-                text: "Proszę o kod do kłódki.",
-                action: () => {
-                  showDialog(
-                    "Pani sprzątająca: 'To nie tak łatwo! Musisz sam się domyślić. Powiem tylko, że to był najważniejszy rok w moim życiu - kiedy się tu przeprowadziłam. Miałam wtedy 22 lata i było tuż po wielkiej wojnie...'"
-                  );
-                }
-              },
-              {
-                text: "Kiedy Pani się tu przeprowadziła?",
-                action: () => {
-                  gameState.gotCode = true;
-                  showDialog(
-                    "Pani sprzątająca: 'To była wielka zmiana - tuż po wojnie. Przeprowadziłam się tu jako młoda dziewczyna, miałam wtedy 22 lata.'"
-                  );
-                }
-              }
-            ];
-            showDialogWithOptions(
-              "Pani sprzątająca: 'Och! Pytasz o kratkę kanalizacyjną? To stare miejsce kryje tajemnice...'",
-              riddleOptions,
-              "👵 Pani Sprzątająca"
+            showDialog(
+              "Pani sprzątająca: 'O, wspaniale! Kod jest napisany na zawieszce. Kliknij na kluczyk w ekwipunku!'"
             );
           }
         },
         {
-          text: "Jak się Pani miewa?",
+          text: "← Zakończ rozmowę",
           action: () => {
-            showDialog(
-              "Pani sprzątająca: 'Dobrze, dziękuję za pytanie. Sprzątam tu już od lat!'"
-            );
+            hideDialog();
           }
         }
       ];
       showDialogWithOptions(
-        "Pani sprzątająca: 'Dzień dobry! Jak się masz?'",
+        "Pani sprzątająca: 'Znalazł Pan mój kluczyk?'",
+        options,
+        "👵 Pani Sprzątająca"
+      );
+    } else if (gameState.readLetter && !gameState.askedAboutIntercomCode) {
+      const options = [
+        {
+          text: "Mam pytanie o tymczasowy kod do domofonu...",
+          action: () => {
+            gameState.askedAboutIntercomCode = true;
+            showDialog(
+              "Pani sprzątająca: 'Och tak! Miałam kod na zawieszce przy kluczu, ale go zgubiłam. Może gdzieś w okolicy?'"
+            );
+          }
+        },
+        {
+          text: "← Zakończ rozmowę",
+          action: () => {
+            hideDialog();
+          }
+        }
+      ];
+      showDialogWithOptions(
+        "Pani sprzątająca: 'Dzień dobry! Słyszałam, że są problemy z domofonem?'",
+        options,
+        "👵 Pani Sprzątająca"
+      );
+    } else if (gameState.gotInfoFromKowalski) {
+      const options = [
+        {
+          text: "Pan Kowalski mówił, że coś Pani mówiła o oknach...",
+          action: () => {
+            if (!gameState.askedAboutWindows) {
+              gameState.askedAboutWindows = true;
+              showDialog(
+                "Pani sprzątająca: 'Ach tak! Sprzątam okna w tym budynku. 6 okien już lśni jak złoto, ale resztę trzeba jeszcze umyć. Może to ma jakieś powiązanie z kratką kanalizacyjną? Nie wiem...'"
+              );
+            } else {
+              showDialog(
+                "Pani sprzątająca: 'Hm... umyte 6, a dokładnie 3, 1 i 2'"
+              );
+            }
+          }
+        },
+        {
+          text: "← Zakończ rozmowę",
+          action: () => {
+            hideDialog();
+          }
+        }
+      ];
+      showDialogWithOptions(
+        "Pani sprzątająca: 'Dzień dobry! Pan Kowalski coś mówił?'",
         options,
         "👵 Pani Sprzątająca"
       );
     } else {
       const options = [
         {
-          text: "Czy zna Pani historię tej kratki kanalizacyjnej?",
-          action: () => {
-            showDialog(
-              "Pani sprzątająca: 'Pan Kowalski z psem więcej wie o starych czasach.'"
-            );
-          }
-        },
-        {
-          text: "Dzień dobry! Piękny wieczór.",
-          action: () => {
-            showDialog(
-              "Pani sprzątająca: 'Rzeczywiście piękny, choć trochę ponury!'"
-            );
-          }
-        },
-        {
           text: "Co Pani tutaj robi?",
           action: () => {
             showDialog(
-              "Pani sprzątająca: 'Sprzątam podwórko. Ktoś musi dbać o porządek!'"
+              "Pani sprzątająca: 'Sprzątam podwórko i okna. Ktoś musi dbać o porządek!'"
             );
+          }
+        },
+        {
+          text: "Jak długo Pani tu pracuje?",
+          action: () => {
+            showDialog(
+              "Pani sprzątająca: 'Już wiele lat. Znam każdy kąt tego budynku!'"
+            );
+          }
+        },
+        {
+          text: "← Zakończ rozmowę",
+          action: () => {
+            hideDialog();
           }
         }
       ];
       showDialogWithOptions(
-        "Pani sprzątająca: 'Dzień dobry! Piękny wieczór.'",
+        "Pani sprzątająca: 'Dzień dobry! Piękny wieczór na sprzątanie.'",
         options,
         "👵 Pani Sprzątająca"
       );
@@ -1558,43 +1592,43 @@ class CourtyardScene extends Scene {
   }
 
   talkToNeighbor() {
-    if (gameState.gotInfo) {
+    if (gameState.gotInfoFromKowalski) {
       const options = [
         {
-          text: "Powiedział Pan już o pani sprzątającej.",
+          text: "Już rozmawiałem z panią sprzątającą.",
           action: () => {
-            showDialog("Pan Kowalski: 'Tak, ona wie wszystko o tym miejscu!'");
+            showDialog(
+              "Pan Kowalski: 'Dobrze! Ona wie wszystko o tym budynku!'"
+            );
           }
         },
         {
-          text: "Jak długo tu Pan mieszka?",
+          text: "← Zakończ rozmowę",
           action: () => {
-            showDialog(
-              "Pan Kowalski: 'Od 1943 roku. Pamiętam jeszcze wojnę...'"
-            );
+            hideDialog();
           }
         }
       ];
       showDialogWithOptions(
-        "Pan Kowalski: 'Powiedziałem już o pani sprzątającej.'",
+        "Pan Kowalski: 'Burek jest zadowolony! Jak poszło z panią sprzątającą?'",
         options,
         "👨 Pan Kowalski"
       );
     } else if (gameState.gaveBone) {
       const options = [
         {
-          text: "Potrzebuję informacji o kratce kanalizacyjnej...",
+          text: "Potrzebuję pomocy...",
           action: () => {
-            gameState.gotInfo = true;
+            gameState.gotInfoFromKowalski = true;
             showDialog(
-              "Pan Kowalski: 'Pani sprzątająca zna historię kratki najlepiej. Mieszka tu od dawna!'"
+              "Pan Kowalski: 'Pani sprzątająca często coś mówiła o oknach w tym budynku. Może ona wie więcej?'"
             );
           }
         },
         {
-          text: "Burek wygląda na zadowolonego!",
+          text: "← Zakończ rozmowę",
           action: () => {
-            showDialog("Pan Kowalski: 'Tak! Uwielbia kości! Dziękuję!'");
+            hideDialog();
           }
         }
       ];
@@ -1610,20 +1644,20 @@ class CourtyardScene extends Scene {
           action: () => {
             removeItem("Kość");
             gameState.gaveBone = true;
-            showDialog("Pan Kowalski: 'Burek uwielbia kości! Dziękuję!'");
+            showDialog(
+              "Pan Kowalski: 'Burek uwielbia kości! Dziękuję bardzo!'"
+            );
           }
         },
         {
-          text: "Ładny pies!",
+          text: "← Zakończ rozmowę",
           action: () => {
-            showDialog(
-              "Pan Kowalski: 'To mój Burek. Ale jest niespokojny - szuka czegoś do gryzienia.'"
-            );
+            hideDialog();
           }
         }
       ];
       showDialogWithOptions(
-        "Pan Kowalski: 'Dzień dobry! Burek nie może usiedzieć w miejscu.'",
+        "Pan Kowalski: 'Dzień dobry! Burek jest dziś bardzo niespokojny.'",
         options,
         "👨 Pan Kowalski"
       );
@@ -1638,11 +1672,9 @@ class CourtyardScene extends Scene {
           }
         },
         {
-          text: "Jak się Pan miewa?",
+          text: "← Zakończ rozmowę",
           action: () => {
-            showDialog(
-              "Pan Kowalski: 'Dobrze, ale Burek jest dziś niespokojny.'"
-            );
+            hideDialog();
           }
         }
       ];
@@ -1668,6 +1700,12 @@ class CourtyardScene extends Scene {
           action: () => {
             showDialog("Listonosz: 'Proszę bardzo! To moja praca.'");
           }
+        },
+        {
+          text: "← Zakończ rozmowę",
+          action: () => {
+            hideDialog();
+          }
         }
       ];
       showDialogWithOptions(
@@ -1681,7 +1719,6 @@ class CourtyardScene extends Scene {
           text: "Mam dowód osobisty.",
           action: () => {
             gameState.gotLetter = true;
-            gameState.canEnter = true;
             addItem("List");
             showDialog("Listonosz: 'Świetnie! Oto Pana list.'");
           }
@@ -1692,6 +1729,12 @@ class CourtyardScene extends Scene {
             showDialog(
               "Listonosz: 'Od Urzędu Miasta. Ale muszę sprawdzić tożsamość.'"
             );
+          }
+        },
+        {
+          text: "← Zakończ rozmowę",
+          action: () => {
+            hideDialog();
           }
         }
       ];
@@ -1716,6 +1759,12 @@ class CourtyardScene extends Scene {
             showDialog(
               "Listonosz: 'Czekam na Pana! Mam ważny list od Urzędu Miasta.'"
             );
+          }
+        },
+        {
+          text: "← Zakończ rozmowę",
+          action: () => {
+            hideDialog();
           }
         }
       ];
@@ -1749,13 +1798,15 @@ class CourtyardScene extends Scene {
   }
 
   render() {
-    // NOWE TŁO Z BUDYNKAMI I POSTACIAMI
-    const img = new Image();
-    img.src = "https://i.imgur.com/o0r1Gow.png";
+    // Wybierz już załadowany obraz
+    const img = gameState.intercomUnlocked
+      ? preloadImages.courtyardOpen
+      : preloadImages.courtyard;
+
     if (img.complete) {
       ctx.drawImage(img, 0, 0, 800, 600);
     } else {
-      // Fallback jeśli się nie załaduje
+      // Fallback
       ctx.fillStyle = "#2a2520";
       ctx.fillRect(0, 0, 800, 600);
     }
@@ -1774,7 +1825,7 @@ class CourtyardScene extends Scene {
     ctx.fillStyle = "rgba(20, 20, 30, 0.1)";
     ctx.fillRect(0, 0, 800, 600);
     // DEBUG: Czerwone ramki stref klikalnych
-    if (true) {
+    if (false) {
       // Zmień na false aby wyłączyć
       ctx.save();
       ctx.strokeStyle = "#ff0000";
@@ -1790,6 +1841,237 @@ class CourtyardScene extends Scene {
         ctx.textAlign = "left";
         const index = this.clickAreas.indexOf(area);
         ctx.fillText(`${index}`, area.x + 2, area.y + 13);
+      }
+      ctx.restore();
+    }
+  }
+}
+class StaircaseScene extends Scene {
+  constructor() {
+    super();
+    this.setupAreas();
+
+    // SYSTEM DESZCZU (subtelny w klatce)
+    this.rainDrops = [];
+    this.initRain();
+  }
+
+  setupAreas() {
+    // DRZWI Z NUMEREM 3 (prawe drzwi - lepsze dopasowanie)
+    this.addArea(650, 200, 100, 250, () => {
+      changeScene("apartment");
+    });
+
+    // WYCIERACZKA (czerwona mata przed drzwiami)
+    this.addArea(620, 480, 100, 25, () => this.examineWycieraczka());
+
+    // SKRZYNKA Z BEZPIECZNIKAMI (szara skrzynka na lewej ścianie)
+    this.addArea(575, 140, 40, 70, () => this.examineFuseBox());
+
+    // WÓZEK DZIECIĘCY (niebieski wózek w lewym dolnym rogu)
+    this.addArea(20, 350, 150, 180, () => this.examineStroller());
+
+    // SCHODY (czerwone schody w środku)
+    this.addArea(400, 150, 80, 200, () => this.examineStairs());
+
+    // POWRÓT NA PODWÓRKO (lewy dolny róg - area wyjścia)
+    this.addArea(750, 550, 80, 60, () => {
+      showDialog("Wracasz na podwórko...", 1500);
+      setTimeout(() => changeScene("courtyard"), 1500);
+    });
+  }
+
+  // SYSTEM DESZCZU (bardzo subtelny w klatce)
+  initRain() {
+    this.rainDrops = [];
+    for (let i = 0; i < 10; i++) {
+      this.rainDrops.push(this.createRainDrop());
+    }
+  }
+
+  createRainDrop() {
+    return {
+      x: Math.random() * 50 + 10, // Tylko przy wejściu
+      y: Math.random() * 400 + 50,
+      speed: Math.random() * 0.5 + 0.3,
+      length: Math.random() * 6 + 2,
+      opacity: Math.random() * 0.1 + 0.02,
+      angle: Math.random() * 0.05
+    };
+  }
+
+  updateRain() {
+    for (let drop of this.rainDrops) {
+      drop.y += drop.speed;
+      drop.x += drop.angle * drop.speed;
+
+      if (drop.y > 550) {
+        drop.y = 50;
+        drop.x = Math.random() * 50 + 10;
+        drop.speed = Math.random() * 0.5 + 0.3;
+        drop.length = Math.random() * 6 + 2;
+        drop.opacity = Math.random() * 0.1 + 0.02;
+        drop.angle = Math.random() * 0.05;
+      }
+    }
+  }
+
+  drawRain() {
+    ctx.save();
+    for (let drop of this.rainDrops) {
+      ctx.globalAlpha = drop.opacity;
+      ctx.strokeStyle = "#a0c4e0";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(drop.x, drop.y);
+      ctx.lineTo(drop.x + drop.angle * drop.length, drop.y + drop.length);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // INTERAKCJE Z OBIEKTAMI
+  examineWycieraczka() {
+    const options = [
+      {
+        text: "Podnieś wycieraczkę",
+        action: () => {
+          if (!gameState.searchedWycieraczka) {
+            gameState.searchedWycieraczka = true;
+            showDialog(
+              "Pod wycieraczką znalazłeś stare klucze do piwnicy, ale są zbyt zardzewiałe.",
+              3000
+            );
+          } else {
+            showDialog("Już sprawdziłeś pod wycieraczką.", 2000);
+          }
+        }
+      },
+      {
+        text: "← Zakończ",
+        action: () => {
+          hideDialog();
+        }
+      }
+    ];
+    showDialogWithOptions(
+      "Stara, zniszczona wycieraczka z napisem 'WITAMY'.",
+      options
+    );
+  }
+
+  examineFuseBox() {
+    const options = [
+      {
+        text: "Otwórz skrzynkę",
+        action: () => {
+          showDialog(
+            "Skrzynka jest zamknięta na kłódkę. Wszystkie bezpieczniki wyglądają na sprawne.",
+            3000
+          );
+        }
+      },
+      {
+        text: "Sprawdź licznik",
+        action: () => {
+          showDialog(
+            "Stary licznik elektryczny z lat 70-tych. Wskazówki powoli się poruszają.",
+            2500
+          );
+        }
+      },
+      {
+        text: "← Zakończ",
+        action: () => {
+          hideDialog();
+        }
+      }
+    ];
+    showDialogWithOptions(
+      "Metalowa skrzynka z bezpiecznikami i licznikiem prądu.",
+      options
+    );
+  }
+
+  examineStroller() {
+    const options = [
+      {
+        text: "Przeszukaj wózek",
+        action: () => {
+          if (!gameState.searchedStroller) {
+            gameState.searchedStroller = true;
+            addItem("Stare monety");
+            showDialog(
+              "W wózku znalazłeś kilka starych monet sprzed lat!",
+              3000
+            );
+          } else {
+            showDialog("Wózek jest już pusty.", 2000);
+          }
+        }
+      },
+      {
+        text: "Sprawdź koła",
+        action: () => {
+          showDialog(
+            "Koła są spłaszczone i pokryte kurzem. Ten wózek nie był używany od lat.",
+            2500
+          );
+        }
+      },
+      {
+        text: "← Zakończ",
+        action: () => {
+          hideDialog();
+        }
+      }
+    ];
+    showDialogWithOptions(
+      "Stary, niebieski wózek dziecięcy. Wygląda jak z lat 80-tych.",
+      options
+    );
+  }
+
+  examineStairs() {
+    showDialog(
+      "Drewniane schody prowadzą na górne piętra. Słychać skrzypienie starych desek.",
+      3000
+    );
+  }
+
+  render() {
+    // Rysuj obraz klatki schodowej
+    const img = preloadImages.staircase;
+    if (img.complete) {
+      ctx.drawImage(img, 0, 0, 800, 600);
+    } else {
+      // Fallback
+      ctx.fillStyle = "#4a5c3a";
+      ctx.fillRect(0, 0, 800, 600);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "20px Georgia";
+      ctx.textAlign = "center";
+      ctx.fillText("Klatka schodowa", 400, 300);
+    }
+
+    // AKTUALIZUJ I NARYSUJ DESZCZ
+    this.updateRain();
+    this.drawRain();
+
+    // Lekkie przyciemnienie dla klimatu
+    ctx.fillStyle = "rgba(20, 20, 30, 0.05)";
+    ctx.fillRect(0, 0, 800, 600);
+
+    // OPCJONALNE: DEBUG - czerwone ramki obszarów klikalnych
+    if (false) {
+      // Zmień na true aby zobaczyć obszary
+      ctx.save();
+      ctx.strokeStyle = "#ff0000";
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.6;
+
+      for (let area of this.clickAreas) {
+        ctx.strokeRect(area.x, area.y, area.w, area.h);
       }
       ctx.restore();
     }
@@ -2260,7 +2542,9 @@ class EndingScene extends Scene {
         gotLetter: false,
         canEnter: false,
         intercomUnlocked: false,
-        hasIntercomCode: false
+        hasIntercomCode: false,
+        searchedWycieraczka: false, // NOWE
+        searchedStroller: false // NOWE
       };
       updateInventoryDisplay();
       this.alpha = 0;
@@ -2346,4 +2630,65 @@ document.addEventListener("DOMContentLoaded", function () {
       log("❌ Krytyczny błąd: " + error.message);
     }
   }, 100);
+});
+document.addEventListener("keydown", function (e) {
+  if (e.ctrlKey && e.shiftKey && e.key === "F") {
+    // Tworzymy popup
+    const popup = document.createElement("div");
+    popup.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            z-index: 10001;
+            text-align: center;
+            font-family: Georgia, serif;
+            border: 3px solid gold;
+            animation: popupAppear 0.5s ease-out;
+        `;
+
+    popup.innerHTML = `
+            <div style="font-size: 24px; margin-bottom: 15px;">ODKRYŁEŚ SEKRET FAMILOCKA!</div>
+            <div style="font-size: 18px; margin-bottom: 20px; color: #FFD700; font-weight: bold;">
+                Kod rabatowy: STARZIK2025
+            </div>
+            <div style="font-size: 14px; margin-bottom: 20px;">
+                Użyj tego kodu na www.familock.pl przy rezerwacji!
+            </div>
+            <button onclick="this.parentElement.remove()" style="
+                background: gold;
+                color: black;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-weight: bold;
+                font-size: 14px;
+            ">ZAMKNIJ</button>
+        `;
+
+    // Dodaj animację CSS
+    const style = document.createElement("style");
+    style.textContent = `
+            @keyframes popupAppear {
+                0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+                100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            }
+        `;
+    document.head.appendChild(style);
+
+    document.body.appendChild(popup);
+
+    // Automatycznie usuń po 10 sekundach
+    setTimeout(() => {
+      if (popup.parentElement) {
+        popup.remove();
+      }
+    }, 10000);
+  }
 });
