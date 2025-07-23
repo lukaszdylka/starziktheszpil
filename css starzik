@@ -46,13 +46,13 @@ canvas {
 .inventory {
   position: absolute;
   top: 10px;
-  right: 10px;
+  right: 60px;
   background: rgba(0, 0, 0, 0.8);
   border: 1px solid #555;
   padding: 10px;
   border-radius: 5px;
   font-size: 12px;
-  min-width: 120px;
+  min-width: 140px;
   z-index: 998;
   display: none;
 }
@@ -99,6 +99,7 @@ canvas {
   display: none;
   font-size: 14px;
   z-index: 999;
+  position: relative; /* DODAJ TĘ LINIĘ */
 }
 
 .dialog-option {
@@ -196,4 +197,29 @@ canvas {
   background: #000;
   width: 100vw;
   height: 100vh;
+}
+.fullscreen-icon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 40px;
+  height: 40px;
+  background: rgba(45, 55, 72, 0.8);
+  border: 2px solid #4a5568;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  font-family: Arial, sans-serif;
+}
+.fullscreen-icon:hover {
+  background: rgba(74, 85, 104, 0.9);
+  border-color: #ed8936;
+  transform: scale(1.1);
 }
