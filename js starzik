@@ -13,7 +13,12 @@ const itemIcons = {
   "Kartka z kodem": "📜",
   "Stara fotografia": "📷",
   "Stare monety": "🪙",
-  Dokumenty: "📋"
+  Dokumenty: "📋",
+  Bezpiecznik: "🔌",
+  "Mały klucz do szafki": "🗝️",
+  "Notes z telefonami": "📞",
+  "Kartka z sejfu": "📝",
+  Walizka: "💼"
 };
 
 function log(message) {
@@ -26,9 +31,18 @@ function checkIntercomCodeDirect(code) {
 
   if (code === "8802") {
     gameState.intercomUnlocked = true;
-    showDialog("Domofon wydaje dźwięk i drzwi się otwierają!", 3000);
+
+    // DODAJ DŹWIĘK OTWIERANIA DRZWI
+    const doorSound = new Audio("https://files.catbox.moe/flpfyi.mp3");
+    doorSound.volume = 0.8;
+    doorSound
+      .play()
+      .then(() => console.log("✅ Dźwięk drzwi odtworzony"))
+      .catch((e) => console.log("❌ Nie można odtworzyć dźwięku drzwi:", e));
+
+    showDialog("Domofon wydaje dźwięk i drzwi się otwierają!");
   } else {
-    showDialog("Nieprawidłowy kod do domofonu.", 3000);
+    showDialog("Nieprawidłowy kod do domofonu.");
   }
 }
 // PRELOAD OBRAZÓW
@@ -38,7 +52,11 @@ const preloadImages = {
   apartment: new Image(),
   keyWithCode: new Image(),
   letter: new Image(),
-  staircase: new Image()
+  staircase: new Image(),
+  hiddenPicture: new Image(),
+  safe: new Image(),
+  tvScreen: new Image(),
+  suitcase: new Image()
 };
 
 preloadImages.courtyard.src = "https://i.imgur.com/o0r1Gow.png";
@@ -47,6 +65,10 @@ preloadImages.apartment.src = "https://i.imgur.com/CcmvRTN.jpeg";
 preloadImages.keyWithCode.src = "https://i.imgur.com/RlK3rAq.png";
 preloadImages.letter.src = "https://i.imgur.com/WpYLQLB.png";
 preloadImages.staircase.src = "https://i.imgur.com/7HN1h8Z.png";
+preloadImages.hiddenPicture.src = "https://i.imgur.com/IDnZ13x.png";
+preloadImages.safe.src = "https://i.imgur.com/u3pO09J.png";
+preloadImages.tvScreen.src = "https://i.imgur.com/Xi3zXIA.png";
+preloadImages.suitcase.src = "https://i.imgur.com/gT3o9yo.png";
 
 // Zacznij ładowanie od razu
 preloadImages.courtyard.onload = () => console.log("Podwórko załadowane!");
@@ -81,7 +103,14 @@ function initGame() {
       askedAboutIntercomCode: false, // NOWE - czy pytał o kod do domofonu
       readLetter: false,
       canEnter: false,
-      intercomUnlocked: false
+      intercomUnlocked: false,
+      fuseBoxSolved: false,
+      foundSafeCard: false,
+      safeOpened: false,
+      tvTurnedOn: false,
+      suitcaseFound: false,
+      tvScreenOn: false,
+      cabinetOpened: false
     };
 
     scenes = {
@@ -118,7 +147,10 @@ function handleClick(e) {
   if (dialogVisible) {
     return;
   }
-
+  // URUCHOM MUZYKĘ TŁA po kliknięciu
+  if (scenes[currentScene] && scenes[currentScene].startMusic) {
+    scenes[currentScene].startMusic();
+  }
   scenes[currentScene].click(x, y);
 }
 
@@ -130,9 +162,17 @@ function handleMouseMove(e) {
   scenes[currentScene].hover(x, y);
 }
 
-function showDialog(text, duration = 3000) {
+function showDialog(text, duration = 0) {
   const dialogEl = document.getElementById("dialog");
-  dialogEl.innerHTML = text;
+
+  const dialogContent = `
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+      <div style="flex: 1; padding-right: 10px;">${text}</div>
+      <button onclick="hideDialog()" style="width: 25px; height: 25px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 14px; font-weight: bold; flex-shrink: 0;">×</button>
+    </div>
+  `;
+
+  dialogEl.innerHTML = dialogContent;
   dialogEl.style.display = "block";
   dialogVisible = true;
 
@@ -240,10 +280,16 @@ function useItem(item) {
     } else {
       showDialog("To mały kluczyk. Może ktoś wie, do czego służy?", 2000);
     }
+  } else if (item === "Pamiętnik") {
+    showDiaryWithHint();
+  } else if (item === "Notes z telefonami") {
+    showPhoneNotes();
+  } else if (item === "Kartka z sejfu") {
+    showSafeCard();
+  } else if (item === "Walizka") {
+    showSuitcaseEnding();
   } else if (item === "Kartka z kodem") {
     showCodeCard();
-  } else if (item === "Pamiętnik") {
-    showDiary();
   } else if (item === "Stara fotografia") {
     showOldPhoto();
   } else if (item === "Dokumenty") {
@@ -426,7 +472,7 @@ function checkCodeDirect(code) {
       4000
     );
   } else {
-    showDialog("Nieprawidłowy kod. Może potrzebujesz więcej wskazówek?", 3000);
+    showDialog("Nieprawidłowy kod. Może potrzebujesz więcej wskazówek?");
   }
 }
 
@@ -434,18 +480,145 @@ function changeScene(sceneName) {
   currentScene = sceneName;
   hideDialog();
 
-  // Zatrzymaj muzykę z menu gdy przechodzimy do innej sceny
-  if (currentScene !== "menu" && scenes.menu && scenes.menu.backgroundMusic) {
-    scenes.menu.backgroundMusic.pause();
+  // Zatrzymaj wszystkie muzyki
+  Object.values(scenes).forEach((scene) => {
+    if (scene.backgroundMusic) {
+      scene.backgroundMusic.pause();
+    }
+  });
+  // DODAJ RESET KARTKI PRZY POWROCIE DO MENU:
+  if (sceneName === "menu" && scenes.menu) {
+    scenes.menu.introPaper.visible = false;
+    scenes.menu.introPaper.animation = 0;
+    scenes.menu.introPaper.showButton = false;
+    // Przywróć obszary kliknięcia przycisków
+    scenes.menu.clickAreas = [];
+    scenes.menu.addArea(0, 0, 800, 600, () => scenes.menu.startMusic());
+    scenes.menu.addArea(300, 300, 200, 50, () => scenes.menu.showIntroPaper());
+    scenes.menu.addArea(300, 370, 200, 50, () =>
+      showDialog(
+        "Krótka gra przygodowa - prequel escape roomu Familock w Świętochłowicach.",
+        2000
+      )
+    );
+    scenes.menu.addArea(300, 440, 200, 50, () => {
+      showDialog("Przekierowywanie do Familock...", 2000);
+      setTimeout(() => window.open("https://www.familock.pl", "_blank"), 1000);
+    });
+    scenes.menu.addArea(650, 520, 120, 40, () =>
+      scenes.menu.toggleFullscreen()
+    );
   }
-
   // Pokaż ekwipunek gdy gra się rozpoczyna
   if (sceneName === "courtyard") {
     document.getElementById("inventoryGrid").parentElement.style.display =
       "block";
+    updateFullscreenIcon();
   }
 }
+function showDiaryWithHint() {
+  const diaryContent = `
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;">
+      <button onclick="hideDialog()" style="position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center;">×</button>
+      
+      <div style="background: #2f1b14; color: #d4af37; padding: 20px; border-radius: 8px; margin: 10px 0; border: 2px solid #8b4513;">
+        <div style="text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 18px;">📔 PAMIĘTNIK DZIADKA - 1969 📔</div>
+        <div style="background: #1a0f0a; padding: 15px; border-radius: 5px; font-family: serif; line-height: 1.6;">
+          <p><strong>27 października 1969</strong></p>
+          <p style="margin: 10px 0;">"Dziś Maria powiedziała mi ważną wiadomość. Zostanę ojcem! To najszczęśliwszy dzień w moim życiu."</p>
+          <p style="margin: 10px 0;">"Schowałem nasze najważniejsze dokumenty w bezpiecznym miejscu. Numer tego dnia - 2710 - będzie moim kodem."</p>
+          <p style="margin: 10px 0; font-style: italic; color: #ffff99;">"Może powinienem zerknąć za stary obraz na ścianie..."</p>
+        </div>
+      </div>
+    </div>
+  `;
+  showDialog(diaryContent, 0);
+}
 
+function showPhoneNotes() {
+  const notesContent = `
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;">
+      <button onclick="hideDialog()" style="position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center;">×</button>
+      
+      <div style="background: #f5f5dc; color: #333; padding: 20px; border-radius: 8px; margin: 10px 0; border: 2px solid #8b7355;">
+        <div style="text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 18px;">📞 NOTES Z TELEFONAMI 📞</div>
+        <div style="background: #fff; padding: 15px; border-radius: 5px; font-family: monospace;">
+          <p><strong>I.</strong> 322452833</p>
+          <p><strong>II.</strong> 322409123</p>
+          <p><strong>III.</strong> 322453320</p>
+          <p><strong>IV.</strong> 322451782</p>
+          <p><strong>V.</strong> 322487524</p>
+        </div>
+        <div style="margin-top: 10px; font-style: italic; text-align: center; color: #666;">
+          Stare numery telefonów z lat 80-tych
+        </div>
+      </div>
+    </div>
+  `;
+  showDialog(notesContent, 0);
+}
+
+function showSafeCard() {
+  const cardContent = `
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;">
+      <button onclick="hideDialog()" style="position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center;">×</button>
+      
+      <div style="background: #f5f5dc; color: #333; padding: 20px; border-radius: 8px; margin: 10px 0; border: 2px solid #8b7355;">
+        <div style="text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 18px;">📝 KARTKA Z SEJFU 📝</div>
+        <div style="text-align: center; margin: 20px 0; font-size: 24px; font-weight: bold; color: #8b4513;">
+          "Największy skarb znajdziesz<br/>pod starą kanapą..."
+        </div>
+        <div style="font-style: italic; text-align: center; margin-top: 15px; color: #666;">
+          Poszukaj pod kanapą w salonie
+        </div>
+      </div>
+    </div>
+  `;
+  showDialog(cardContent, 0);
+}
+
+function showSuitcaseEnding() {
+  // DODAJ DŹWIĘK KOŃCOWY
+  const endingSound = new Audio("https://files.catbox.moe/42b7zp.mp3");
+  endingSound.volume = 0.8;
+  endingSound
+    .play()
+    .then(() => console.log("✅ Dźwięk końcowy odtworzony"))
+    .catch((e) => console.log("❌ Nie można odtworzyć dźwięku końcowego:", e));
+
+  const endingContent = `
+    <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(20, 22, 34, 0.95); z-index: 10001; display: flex; align-items: center; justify-content: center;">
+      <div style="background: #F5F1E8; color: #2C1810; padding: 40px; border-radius: 10px; border: 2px solid #D4C4A8; text-align: center; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); position: relative;">
+        
+        <div style="position: absolute; top: 20px; left: 30px; width: 60px; height: 30px; background: rgba(232, 212, 176, 0.3); border-radius: 50%; transform: rotate(15deg);"></div>
+        <div style="position: absolute; bottom: 40px; right: 20px; width: 50px; height: 25px; background: rgba(232, 212, 176, 0.3); border-radius: 50%; transform: rotate(-10deg);"></div>
+        
+        <div style="font-size: 24px; margin-bottom: 20px; font-weight: bold; font-family: serif; color: #2C1810;">
+          GRATULACJE!
+        </div>
+        
+        <div style="width: 80%; height: 1px; background: #8B4513; margin: 0 auto 20px auto;"></div>
+        
+        <div style="font-size: 16px; margin: 25px 0; line-height: 1.8; font-family: serif;">
+          Nikt nie wie, co znajduje się w walizce...<br/><br/>
+          Chcecie odkryć jej tajemnicę?<br/><br/>
+          <strong>Przyjdźcie sprawdzić do Familocka<br/>
+          w Świętochłowicach przy ulicy Cmentarnej 5!</strong>
+        </div>
+        
+        <div style="margin-top: 30px;">
+          <button onclick="window.open('https://www.familock.pl', '_blank')" style="padding: 12px 20px; background: #2d3748; color: #fff; border: 2px solid #4a5568; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold; margin: 5px; font-family: serif;">
+            WWW.FAMILOCK.PL
+          </button>
+          <button onclick="showCreditsScreen()" style="padding: 12px 20px; background: #8b4513; color: #fff; border: 2px solid #5d2f0a; border-radius: 5px; cursor: pointer; font-size: 14px; margin: 5px; font-family: serif;">
+            TWÓRCY GRY
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  showDialog(endingContent, 0);
+}
 class Scene {
   constructor() {
     this.clickAreas = [];
@@ -554,9 +727,6 @@ class MenuScene extends Scene {
       showDialog("Przekierowywanie do Familock...", 2000);
       setTimeout(() => window.open("https://www.familock.pl", "_blank"), 1000);
     });
-
-    // NOWY PRZYCISK PEŁNEGO EKRANU (prawy dolny róg)
-    this.addArea(650, 520, 120, 40, () => this.toggleFullscreen());
   }
 
   // NOWA METODA - przełączanie pełnego ekranu
@@ -589,7 +759,7 @@ class MenuScene extends Scene {
         showDialog("Wyszedłeś z pełnego ekranu.", 2000);
       }
     } catch (error) {
-      showDialog("Przeglądarka nie obsługuje pełnego ekranu.", 3000);
+      showDialog("Przeglądarka nie obsługuje pełnego ekranu.");
       console.log("Fullscreen error:", error);
     }
   }
@@ -1087,9 +1257,6 @@ class MenuScene extends Scene {
       this.drawButton(300, 300, 200, 50, "ROZPOCZNIJ GRĘ", "main");
       this.drawButton(300, 370, 200, 50, "O GRZE", "secondary");
       this.drawButton(300, 440, 200, 50, "WWW FAMILOCKA", "secondary");
-
-      // NOWY PRZYCISK PEŁNEGO EKRANU
-      this.drawButton(650, 520, 120, 40, "PEŁNY EKRAN", "fullscreen");
     }
 
     // NARYSUJ KAŁUŻE NA KOŃCU
@@ -1213,6 +1380,12 @@ class CourtyardScene extends Scene {
     // NOWY DŹWIĘK PSA
     this.dogSound = new Audio("https://files.catbox.moe/7s8f1a.mp3");
     this.dogSound.volume = 0.8;
+
+    // DODAJ MUZYKĘ TŁA:
+    this.backgroundMusic = new Audio("https://files.catbox.moe/ngqi9t.mp3");
+    this.backgroundMusic.loop = true;
+    this.backgroundMusic.volume = 0.3;
+    this.musicStarted = false;
   }
 
   setupAreas() {
@@ -1249,6 +1422,7 @@ class CourtyardScene extends Scene {
       } else if (hasItem("Łopatka")) {
         gameState.hasBone = true;
         gameState.boneVisible = true;
+        removeItem("Łopatka"); // DODAJ
         showDialog("Wykopałeś starą kość! Możesz ją teraz podnieść.");
       } else {
         showDialog("Kopczyk ziemi. Potrzebuję czegoś do kopania.");
@@ -1455,7 +1629,19 @@ class CourtyardScene extends Scene {
       ctx.fill();
     }
   }
-
+  startMusic() {
+    if (!this.musicStarted) {
+      this.backgroundMusic
+        .play()
+        .then(() => {
+          console.log("Muzyka podwórka uruchomiona!");
+          this.musicStarted = true;
+        })
+        .catch((e) => {
+          console.log("Nie można odtworzyć muzyki podwórka:", e);
+        });
+    }
+  }
   drawBone() {
     if (!gameState.boneVisible) return; // Nie rysuj jeśli nie widoczna
 
@@ -1527,7 +1713,7 @@ class CourtyardScene extends Scene {
       showDialogWithOptions(
         "Pani sprzątająca: 'Dzień dobry! Słyszałam, że są problemy z domofonem?'",
         options,
-        "👵 Pani Sprzątająca"
+        "Pani Sprzątająca"
       );
     } else if (gameState.gotInfoFromKowalski) {
       const options = [
@@ -1541,7 +1727,7 @@ class CourtyardScene extends Scene {
               );
             } else {
               showDialog(
-                "Pani sprzątająca: 'Hm... umyte 6, a dokładnie 3, 1 i 2'"
+                "Pani sprzątająca: 'Hm... umyte 6 okien, a dokładnie 3, 1 i 2'"
               );
             }
           }
@@ -1720,6 +1906,7 @@ class CourtyardScene extends Scene {
           action: () => {
             gameState.gotLetter = true;
             addItem("List");
+            removeItem("Dowód osobisty"); // DODAJ
             showDialog("Listonosz: 'Świetnie! Oto Pana list.'");
           }
         },
@@ -1781,7 +1968,7 @@ class CourtyardScene extends Scene {
     this.moonSound
       .play()
       .catch((e) => console.log("Nie można odtworzyć dźwięku księżyca:", e));
-    showDialog("Księżyc świeci tajemniczo nad Świętochłowicami...", 3000);
+    showDialog("Księżyc świeci tajemniczo nad Świętochłowicami...");
   }
   clickDog() {
     console.log("🐕 Kliknięto w psa Burka");
@@ -1794,7 +1981,7 @@ class CourtyardScene extends Scene {
         .catch((e) => console.log("❌ Dog sound failed:", e));
     }
 
-    showDialog("Burek szczeka.", 3000);
+    showDialog("Burek szczeka.");
   }
 
   render() {
@@ -1854,12 +2041,33 @@ class StaircaseScene extends Scene {
     // SYSTEM DESZCZU (subtelny w klatce)
     this.rainDrops = [];
     this.initRain();
-  }
+    this.fuseBoxOpen = false;
+    this.fuseInstalled = false;
+    this.fuseBoxSolution = [6, 4, 1, 5, 3, 2];
+    this.currentSequence = [];
+    this.allFusesInstalled = false;
 
+    // DODAJ MUZYKĘ TŁA:
+    this.backgroundMusic = new Audio("https://files.catbox.moe/ngqi9t.mp3");
+    this.backgroundMusic.loop = true;
+    this.backgroundMusic.volume = 0.3;
+    this.musicStarted = false;
+
+    // DODAJ DŹWIĘK OTWIERANIA SKRZYNKI:
+    this.fuseBoxSound = new Audio("https://files.catbox.moe/jeposu.mp3");
+    this.fuseBoxSound.volume = 0.7;
+  }
   setupAreas() {
     // DRZWI Z NUMEREM 3 (prawe drzwi - lepsze dopasowanie)
     this.addArea(650, 200, 100, 250, () => {
-      changeScene("apartment");
+      if (gameState.fuseBoxSolved) {
+        showDialog(
+          "Hm... zawsze byłem sprytny. Otwarcie drzwi do mieszkania bezpiecznikami, a nie kluczem..."
+        );
+        setTimeout(() => changeScene("apartment"));
+      } else {
+        showDialog("Drzwi są zamknięte. Może problem z prądem?");
+      }
     });
 
     // WYCIERACZKA (czerwona mata przed drzwiami)
@@ -1888,7 +2096,19 @@ class StaircaseScene extends Scene {
       this.rainDrops.push(this.createRainDrop());
     }
   }
-
+  startMusic() {
+    if (!this.musicStarted) {
+      this.backgroundMusic
+        .play()
+        .then(() => {
+          console.log("Muzyka klatki uruchomiona!");
+          this.musicStarted = true;
+        })
+        .catch((e) => {
+          console.log("Nie można odtworzyć muzyki klatki:", e);
+        });
+    }
+  }
   createRainDrop() {
     return {
       x: Math.random() * 50 + 10, // Tylko przy wejściu
@@ -1961,75 +2181,75 @@ class StaircaseScene extends Scene {
   }
 
   examineFuseBox() {
-    const options = [
-      {
-        text: "Otwórz skrzynkę",
-        action: () => {
-          showDialog(
-            "Skrzynka jest zamknięta na kłódkę. Wszystkie bezpieczniki wyglądają na sprawne.",
-            3000
-          );
-        }
-      },
-      {
-        text: "Sprawdź licznik",
-        action: () => {
-          showDialog(
-            "Stary licznik elektryczny z lat 70-tych. Wskazówki powoli się poruszają.",
-            2500
-          );
-        }
-      },
-      {
-        text: "← Zakończ",
-        action: () => {
+    if (!this.fuseInstalled) {
+      this.fuseBoxSound
+        .play()
+        .then(() => console.log("✅ Dźwięk skrzynki odtworzony"))
+        .catch((e) =>
+          console.log("❌ Nie można odtworzyć dźwięku skrzynki:", e)
+        );
+      const fuseBoxContent = `
+     <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;">
+       <!-- KRZYŻYK W PRAWYM GÓRNYM ROGU -->
+       <button onclick="hideDialog()" style="position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center;">×</button>
+       
+       <div style="position: relative; display: inline-block;">
+         <img src="https://i.imgur.com/a4v9IHD.png" style="max-width: 90vw; max-height: 70vh; display: block;" alt="Skrzynka bezpieczników">
+         <div onclick="window.clickEmptyFuseSlot()" style="position: absolute; top: 42%; left: 35%; width: 15%; height: 15%; cursor: pointer;"></div>
+       </div>
+     </div>`;
+
+      const self = this;
+      window.clickEmptyFuseSlot = () => {
+        if (hasItem("Bezpiecznik")) {
+          self.installFuse();
+        } else {
           hideDialog();
+          showDialog(
+            "To puste miejsce po bezpieczniku. Potrzebuję znaleźć odpowiedni bezpiecznik.",
+            2000
+          );
         }
-      }
-    ];
-    showDialogWithOptions(
-      "Metalowa skrzynka z bezpiecznikami i licznikiem prądu.",
-      options
-    );
+      };
+
+      showDialog(fuseBoxContent, 0);
+    } else {
+      this.showFuseBoxPuzzle();
+    }
   }
 
   examineStroller() {
-    const options = [
-      {
-        text: "Przeszukaj wózek",
-        action: () => {
-          if (!gameState.searchedStroller) {
-            gameState.searchedStroller = true;
-            addItem("Stare monety");
-            showDialog(
-              "W wózku znalazłeś kilka starych monet sprzed lat!",
-              3000
-            );
-          } else {
-            showDialog("Wózek jest już pusty.", 2000);
-          }
+    const strollerContent = `
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;">
+      <!-- KRZYŻYK W PRAWYM GÓRNYM ROGU -->
+      <button onclick="hideDialog()" style="position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center;">×</button>
+      
+      <img src="https://i.imgur.com/dZhkYfM.png" style="max-width: 90vw; max-height: 70vh; display: block;" alt="Wózek dziecięcy">
+      <div style="text-align: center; margin-top: 15px;">
+        ${
+          !gameState.searchedStroller
+            ? '<button onclick="window.strollerSearch()" style="padding: 10px 20px; background: #4a5568; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px;">PRZESZUKAJ WÓZEK</button>'
+            : '<button onclick="hideDialog(); showDialog(\'Wózek jest już pusty.\', 2000)" style="padding: 10px 20px; background: #6c757d; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px;">JUŻ PRZESZUKANY</button>'
         }
-      },
-      {
-        text: "Sprawdź koła",
-        action: () => {
-          showDialog(
-            "Koła są spłaszczone i pokryte kurzem. Ten wózek nie był używany od lat.",
-            2500
-          );
-        }
-      },
-      {
-        text: "← Zakończ",
-        action: () => {
-          hideDialog();
-        }
-      }
-    ];
-    showDialogWithOptions(
-      "Stary, niebieski wózek dziecięcy. Wygląda jak z lat 80-tych.",
-      options
-    );
+      </div>
+    </div>`;
+
+    const self = this;
+
+    if (!gameState.searchedStroller) {
+      window.strollerSearch = () => {
+        gameState.searchedStroller = true;
+        addItem("Stare monety");
+        addItem("Bezpiecznik");
+        hideDialog();
+        showDialog(
+          "W wózku znalazłeś stare monety i bezpiecznik topikowy!",
+          3000
+        );
+      };
+    }
+
+    showDialog(strollerContent, 0);
   }
 
   examineStairs() {
@@ -2076,6 +2296,93 @@ class StaircaseScene extends Scene {
       ctx.restore();
     }
   }
+  installFuse() {
+    removeItem("Bezpiecznik");
+    this.fuseInstalled = true;
+    hideDialog();
+
+    const installedFuseContent = `
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;">
+      <!-- KRZYŻYK W PRAWYM GÓRNYM ROGU -->
+      <button onclick="hideDialog()" style="position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center;">×</button>
+      
+      <img src="https://i.imgur.com/pDrVYu2.png" style="max-width: 90vw; max-height: 70vh; display: block;" alt="Skrzynka z bezpiecznikami">
+      <div style="text-align: center; margin: 15px 0; color: #fff; font-size: 16px;">
+        Wszystkie bezpieczniki są na miejscu, teraz trzeba je wkręcić w dobrej kolejności.
+      </div>
+      <div style="text-align: center; margin-top: 15px;">
+        <button onclick="hideDialog(); window.startFusePuzzle()" style="padding: 10px 20px; background: #4a5568; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px;">ROZPOCZNIJ UKŁADANIE</button>
+      </div>
+    </div>`;
+
+    const self = this;
+    window.startFusePuzzle = () => {
+      hideDialog();
+      self.allFusesInstalled = true;
+      self.showFuseBoxPuzzle();
+    };
+
+    showDialog(installedFuseContent, 0);
+  }
+
+  showFuseBoxPuzzle() {
+    const puzzleContent = `
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.9); padding: 20px; border-radius: 10px; text-align: center;">
+      <div style="color: #fff; font-size: 18px; margin-bottom: 15px;">ZAGADKA BEZPIECZNIKÓW</div>
+      <div style="color: #ccc; font-size: 14px; margin-bottom: 20px;">Kliknij bezpieczniki w kolejności: 6-4-1-5-3-2</div>
+      <div style="display: grid; grid-template-columns: repeat(3, 80px); gap: 10px; justify-content: center; margin: 20px 0;">
+        <button onclick="window.clickFuse(1)" style="padding: 15px; background: #4a5568; color: #fff; border: 2px solid #666; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">1</button>
+        <button onclick="window.clickFuse(2)" style="padding: 15px; background: #4a5568; color: #fff; border: 2px solid #666; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">2</button>
+        <button onclick="window.clickFuse(3)" style="padding: 15px; background: #4a5568; color: #fff; border: 2px solid #666; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">3</button>
+        <button onclick="window.clickFuse(4)" style="padding: 15px; background: #4a5568; color: #fff; border: 2px solid #666; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">4</button>
+        <button onclick="window.clickFuse(5)" style="padding: 15px; background: #4a5568; color: #fff; border: 2px solid #666; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">5</button>
+        <button onclick="window.clickFuse(6)" style="padding: 15px; background: #4a5568; color: #fff; border: 2px solid #666; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">6</button>
+      </div>
+      <div style="color: #ffff99; font-size: 14px; margin: 10px 0;">Sekwencja: ${this.currentSequence.join(
+        " - "
+      )}</div>
+      <div style="margin-top: 20px;">
+        <button onclick="window.resetFuseSequence()" style="padding: 8px 16px; background: #dc3545; color: #fff; border: none; border-radius: 5px; cursor: pointer; margin: 5px;">RESETUJ</button>
+        <button onclick="hideDialog()" style="padding: 8px 16px; background: #6c757d; color: #fff; border: none; border-radius: 5px; cursor: pointer; margin: 5px;">ZAMKNIJ</button>
+      </div>
+    </div>`;
+    const self = this;
+    window.clickFuse = (number) => {
+      this.addFuseToSequence(number);
+    };
+    window.resetFuseSequence = () => {
+      this.currentSequence = [];
+      this.showFuseBoxPuzzle();
+    };
+
+    showDialog(puzzleContent, 0);
+  }
+
+  addFuseToSequence(fuseNumber) {
+    this.currentSequence.push(fuseNumber);
+
+    if (this.currentSequence.length === this.fuseBoxSolution.length) {
+      if (this.arraysEqual(this.currentSequence, this.fuseBoxSolution)) {
+        gameState.fuseBoxSolved = true;
+        hideDialog();
+        showDialog(
+          "Doskonale! Prąd został przywrócony. Teraz możesz otworzyć drzwi!",
+          4000
+        );
+      } else {
+        this.currentSequence = [];
+        hideDialog();
+        showDialog("Nieprawidłowa kolejność! Spróbuj ponownie.", 2000);
+        setTimeout(() => this.showFuseBoxPuzzle(), 2500);
+      }
+    } else {
+      this.showFuseBoxPuzzle();
+    }
+  }
+
+  arraysEqual(a, b) {
+    return a.length === b.length && a.every((val, index) => val === b[index]);
+  }
 }
 class ApartmentScene extends Scene {
   constructor() {
@@ -2098,6 +2405,11 @@ class ApartmentScene extends Scene {
       lamp: false,
       window: false
     };
+    // DODAJ MUZYKĘ TŁA:
+    this.backgroundMusic = new Audio("https://files.catbox.moe/fkocm5.mp3");
+    this.backgroundMusic.loop = true;
+    this.backgroundMusic.volume = 0.3;
+    this.musicStarted = false;
   }
 
   setupAreas() {
@@ -2138,8 +2450,8 @@ class ApartmentScene extends Scene {
 
     // WYJŚCIE (prawy dolny róg)
     this.addArea(730, 450, 70, 150, () => {
-      showDialog("Wracasz na podwórko...", 2000);
-      setTimeout(() => changeScene("courtyard"), 2000);
+      showDialog("Wracasz na klatkę schodową...", 2000);
+      setTimeout(() => changeScene("staircase"), 2000);
 
       this.addArea(400, 60, 50, 50, () => this.clickMoon());
     });
@@ -2164,7 +2476,19 @@ class ApartmentScene extends Scene {
       angle: Math.random() * 0.1 - 0.05
     };
   }
-
+  startMusic() {
+    if (!this.musicStarted) {
+      this.backgroundMusic
+        .play()
+        .then(() => {
+          console.log("Muzyka mieszkania uruchomiona!");
+          this.musicStarted = true;
+        })
+        .catch((e) => {
+          console.log("Nie można odtworzyć muzyki mieszkania:", e);
+        });
+    }
+  }
   updateRain() {
     for (let drop of this.rainDrops) {
       drop.y += drop.speed;
@@ -2203,9 +2527,9 @@ class ApartmentScene extends Scene {
         action: () => {
           if (!this.searchedPlaces.bookshelf) {
             this.searchedPlaces.bookshelf = true;
-            addItem("Stary klucz");
+            addItem("Mały klucz do szafki");
             showDialog(
-              "Za starymi książkami znalazłeś mały, zardzewiały klucz! Został dodany do ekwipunku."
+              "Za starymi książkami znalazłeś mały klucz do szafki! Został dodany do ekwipunku."
             );
           } else {
             showDialog("Już przeszukałeś książki. Nic więcej tu nie ma.");
@@ -2235,62 +2559,124 @@ class ApartmentScene extends Scene {
   }
 
   examineLowerCabinet() {
-    const options = [
-      {
-        text: "Otwórz dolne szafki",
-        action: () => {
-          if (!this.searchedPlaces.cabinet && hasItem("Stary klucz")) {
-            this.searchedPlaces.cabinet = true;
-            addItem("Pamiętnik");
-            removeItem("Stary klucz");
-            showDialog(
-              "Klucz pasuje! W szafce znalazłeś stary pamiętnik z 1969 roku. Dodano do ekwipunku."
-            );
-          } else if (!hasItem("Stary klucz")) {
-            showDialog(
-              "Szafki są zamknięte na klucz. Potrzebujesz klucza aby je otworzyć."
-            );
-          } else {
-            showDialog("Szafki są już otwarte i puste.");
+    console.log("Cabinet opened:", gameState.cabinetOpened); // DEBUG
+    if (gameState.cabinetOpened) {
+      this.showSafePopup();
+    } else {
+      const options = [
+        {
+          text: "Wprowadź kod do szafki",
+          action: () => {
+            this.showCabinetCodeInput();
+          }
+        },
+        {
+          text: "Sprawdź górę szafek",
+          action: () => {
+            showDialog("Na szafce stoi mała doniczka z uschniętą rośliną.");
           }
         }
-      },
-      {
-        text: "Sprawdź górę szafek",
+      ];
+      showDialogWithOptions(
+        "Ciemne drewniane szafki z kłódką cyfrową. Wymagają 4-cyfrowego kodu.",
+        options
+      );
+    }
+  }
+
+  showCabinetCodeInput() {
+    const codeInputContent = `
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;">
+      <button onclick="hideDialog()" style="position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center;">×</button>
+      
+      <div style="text-align: center; color: #fff;">
+        <h3>Wprowadź 4-cyfrowy kod:</h3>
+        <input type="text" id="cabinetCodeInput" placeholder="____" maxlength="4" style="padding: 10px; font-size: 20px; text-align: center; border: 2px solid #666; border-radius: 5px; background: #333; color: #fff; margin: 10px; width: 100px;">
+        <br>
+        <button onclick="window.checkCabinetCode()" style="padding: 10px 20px; background: #4a5568; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px;">SPRAWDŹ</button>
+      </div>
+    </div>
+  `;
+
+    const self = this;
+    window.checkCabinetCode = () => {
+      const code = document.getElementById("cabinetCodeInput").value;
+      if (code === "2310") {
+        gameState.cabinetOpened = true; // Zapisz stan
+        hideDialog();
+        showDialog(
+          "Szafka się otworzyła! W środku znajduje się sejf. Kliknij ponownie na szafkę aby go zobaczyć.",
+          4000
+        );
+        // BRAK setTimeout - nie pokazuj sejfu od razu!
+      } else {
+        showDialog("Nieprawidłowy kod!", 2000);
+      }
+    };
+
+    showDialog(codeInputContent, 0);
+  }
+
+  examineTV() {
+    const options = [];
+
+    // Jeśli TV nie jest włączony, dodaj opcję włączenia
+    if (!gameState.tvTurnedOn) {
+      options.push({
+        text: "Spróbuj włączyć telewizor",
         action: () => {
-          showDialog("Na szafce stoi mała doniczka z uschniętą rośliną.");
+          gameState.tvTurnedOn = true;
+          this.showTVScreen();
+          showDialog(
+            "Telewizor się włączył! Ekran świeci jasnym światłem.",
+            2000
+          );
+        }
+      });
+    }
+
+    // Zawsze dostępna opcja sprawdzenia za TV
+    options.push({
+      text: "Sprawdź za telewizorem",
+      action: () => {
+        if (gameState.tvTurnedOn) {
+          // Jeśli TV włączony - pokaż popup z kodem
+          this.showTVCodePopup();
+        } else {
+          // Jeśli TV wyłączony - zwykły komunikat
+          showDialog("Za telewizorem znalazłeś stare kable i pył. Nic więcej.");
         }
       }
-    ];
+    });
+
     showDialogWithOptions(
-      "Ciemne drewniane szafki. Wyglądają na solidne i stare.",
+      "Stary telewizor kineskopowy. " +
+        (gameState.tvTurnedOn
+          ? "Ekran świeci jasnym światłem."
+          : "Wygląda jakby nie był używany od lat."),
       options
     );
   }
 
-  examineTV() {
-    const options = [
-      {
-        text: "Spróbuj włączyć telewizor",
-        action: () => {
-          showDialog(
-            "Telewizor nie działa. Ekran jest pokryty kurzem. To stary model z lat 80-tych."
-          );
-        }
-      },
-      {
-        text: "Sprawdź za telewizorem",
-        action: () => {
-          showDialog(
-            "Za telewizorem znalazłeś stare kable i notes z numerami telefonów."
-          );
-        }
-      }
-    ];
-    showDialogWithOptions(
-      "Stary telewizor kineskopowy. Wygląda jakby nie był używany od lat.",
-      options
-    );
+  showTVScreen() {
+    // Zmień tło sceny na obraz TV (dodaj flagę do renderowania)
+    gameState.tvScreenOn = true;
+
+    // Pokaż popup z kodem seryjnym
+    this.showTVCodePopup();
+  }
+
+  showTVCodePopup() {
+    const codePopup = `
+      <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.9); padding: 20px; border-radius: 10px; border: 2px solid #555;">
+        <button onclick="hideDialog()" style="position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center;">×</button>
+        
+        <div style="text-align: center; color: #fff; font-size: 18px; padding: 15px;">
+          <strong>Nr seryjny: I-2 II-1 III-8 IV-6 V-5</strong>
+        </div>
+      </div>
+    `;
+    showDialog(codePopup, 0);
   }
 
   examineTVCabinet() {
@@ -2298,26 +2684,32 @@ class ApartmentScene extends Scene {
       {
         text: "Otwórz szafkę",
         action: () => {
-          if (!this.searchedPlaces.tv) {
+          if (!this.searchedPlaces.tv && hasItem("Mały klucz do szafki")) {
             this.searchedPlaces.tv = true;
-            addItem("Stara fotografia");
+            addItem("Pamiętnik");
+            addItem("Notes z telefonami");
+            removeItem("Mały klucz do szafki");
             showDialog(
-              "W szafce pod telewizorem leży stara fotografia - Starzik z rodziną na tle tego samego budynku! Dodano do ekwipunku."
+              "Klucz pasuje! W szafce znalazłeś pamiętnik dziadka i notes z numerami telefonów. Dodano do ekwipunku."
+            );
+          } else if (!hasItem("Mały klucz do szafki")) {
+            showDialog(
+              "Szafka jest zamknięta na klucz. Potrzebujesz odpowiedni klucz aby ją otworzyć."
             );
           } else {
-            showDialog("Szafka pod TV jest już pusta.");
+            showDialog("Szafka jest już otwarta i pusta.");
           }
         }
       },
       {
         text: "Sprawdź z zewnątrz",
         action: () => {
-          showDialog("Szafka wygląda na często używaną. Może coś w niej jest?");
+          showDialog("Szafka wygląda na zamkniętą. Może potrzebuję klucza?");
         }
       }
     ];
     showDialogWithOptions(
-      "Szafka pod telewizorem. Drzwiczki są lekko uchylone.",
+      "Szafka pod telewizorem. Drzwiczki są zamknięte.",
       options
     );
   }
@@ -2352,19 +2744,11 @@ class ApartmentScene extends Scene {
       {
         text: "Sprawdź za obrazem",
         action: () => {
-          if (!this.searchedPlaces.picture && hasItem("Pamiętnik")) {
-            this.searchedPlaces.picture = true;
-            addItem("Kartka z kodem");
-            showDialog(
-              "Za obrazem znalazłeś ukrytą kartkę z kodem! Dodana do ekwipunku - możesz ją przeczytać klikając na nią."
-            );
-          } else if (!hasItem("Pamiętnik")) {
-            showDialog(
-              "Za obrazem jest pusta ściana. Może coś tu było ukryte, ale potrzebujesz więcej wskazówek?"
-            );
+          if (hasItem("Pamiętnik")) {
+            this.showHiddenPicture();
           } else {
             showDialog(
-              "Już sprawdziłeś za obrazem. Kartka z kodem już nie ma."
+              "Za obrazem jest pusta ściana. Może potrzebuję wskazówki gdzie szukać?"
             );
           }
         }
@@ -2415,6 +2799,7 @@ class ApartmentScene extends Scene {
         text: "Sprawdź poduszki",
         action: () => {
           if (!this.searchedPlaces.sofa) {
+            this.searchedPlaces.sofa = true;
             addItem("Stare monety");
             showDialog(
               "Pod poduszkami znalazłeś kilka starych monet i guzik. Monety dodane do ekwipunku."
@@ -2425,20 +2810,19 @@ class ApartmentScene extends Scene {
         }
       },
       {
-        text: "Sprawdź za sofą",
+        text: "Sprawdź pod sofą",
         action: () => {
-          if (!this.searchedPlaces.sofa && hasItem("Kartka z kodem")) {
-            this.searchedPlaces.sofa = true;
-            addItem("Dokumenty");
-            showDialog(
-              "Za sofą stoi mały sejf! Kod z kartki działał! Znalazłeś ważne dokumenty i testament Starzika!"
-            );
-          } else if (!hasItem("Kartka z kodem")) {
-            showDialog(
-              "Za sofą stoi mała skrytka z kodem cyfrowym. Potrzebujesz kodu aby ją otworzyć."
-            );
+          if (hasItem("Kartka z sejfu")) {
+            if (!gameState.suitcaseFound) {
+              gameState.suitcaseFound = true;
+              this.showSuitcasePopup(); // ZMIANA: pokaż popup zamiast od razu dodawać do ekwipunku
+            } else {
+              showDialog("Już znalazłeś walizkę pod sofą.");
+            }
           } else {
-            showDialog("Sejf za sofą jest już otwarty i pusty.");
+            showDialog(
+              "Pod sofą jest tylko kurz i pajęczyny. Może potrzebuję wskazówki gdzie szukać?"
+            );
           }
         }
       }
@@ -2497,21 +2881,32 @@ class ApartmentScene extends Scene {
   }
 
   render() {
-    // Rysuj zdjęcie mieszkania jako tło
-    const img = new Image();
-    img.src = "https://i.imgur.com/CcmvRTN.jpeg"; // TUTAJ WSTAW URL DO ZDJĘCIA
-    if (img.complete) {
-      ctx.drawImage(img, 0, 0, 800, 600);
+    if (gameState.tvScreenOn) {
+      // Pokaż obraz TV jako tło
+      const tvImg = preloadImages.tvScreen;
+      if (tvImg.complete) {
+        ctx.drawImage(tvImg, 0, 0, 800, 600);
+      } else {
+        // fallback jeśli obraz się nie załadował
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, 800, 600);
+      }
     } else {
-      // Fallback - brązowe tło jeśli zdjęcie się nie załaduje
-      ctx.fillStyle = "#8B4513";
-      ctx.fillRect(0, 0, 800, 600);
-
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "20px Georgia";
-      ctx.textAlign = "center";
-      ctx.fillText("Mieszkanie Starzika", 400, 300);
-      ctx.fillText("(Ładowanie zdjęcia...)", 400, 330);
+      // Normalne mieszkanie
+      const img = new Image();
+      img.src = "https://i.imgur.com/CcmvRTN.jpeg";
+      if (img.complete) {
+        ctx.drawImage(img, 0, 0, 800, 600);
+      } else {
+        // fallback
+        ctx.fillStyle = "#8B4513";
+        ctx.fillRect(0, 0, 800, 600);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "20px Georgia";
+        ctx.textAlign = "center";
+        ctx.fillText("Mieszkanie Starzika", 400, 300);
+        ctx.fillText("(Ładowanie zdjęcia...)", 400, 330);
+      }
     }
 
     // AKTUALIZUJ I NARYSUJ SUBTELNY DESZCZ
@@ -2522,7 +2917,89 @@ class ApartmentScene extends Scene {
     ctx.fillStyle = "rgba(20, 20, 30, 0.1)";
     ctx.fillRect(0, 0, 800, 600);
   }
+  showHiddenPicture() {
+    const hiddenPictureContent = `
+      <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;">
+        <button onclick="hideDialog()" style="position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center;">×</button>
+        
+        <img src="https://i.imgur.com/IDnZ13x.png" style="max-width: 90vw; max-height: 70vh; display: block;" alt="Ukryty obraz z kodem">
+        <div style="text-align: center; margin-top: 15px; color: #fff; font-size: 18px; font-weight: bold;">
+          Kod: 2710
+        </div>
+      </div>
+    `;
+    showDialog(hiddenPictureContent, 0);
+  }
+
+  showSafePopup() {
+    const safeContent = `
+      <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;">
+        <button onclick="hideDialog()" style="position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center;">×</button>
+        
+        <img src="https://i.imgur.com/u3pO09J.png" style="max-width: 90vw; max-height: 70vh; display: block;" alt="Sejf">
+        <div style="text-align: center; margin-top: 15px;">
+          <input type="text" id="safeCodeInput" placeholder="Wprowadź kod" maxlength="5" style="padding: 10px; font-size: 16px; text-align: center; border: 2px solid #666; border-radius: 5px; background: #333; color: #fff; margin: 10px;">
+          <br>
+          <button onclick="window.checkSafeCode()" style="padding: 10px 20px; background: #4a5568; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px;">SPRAWDŹ KOD</button>
+        </div>
+      </div>
+    `;
+
+    const self = this;
+    window.checkSafeCode = () => {
+      const code = document.getElementById("safeCodeInput").value;
+      if (code === "23218") {
+        gameState.safeOpened = true;
+        addItem("Kartka z sejfu");
+        hideDialog();
+        showDialog("Sejf się otworzył! Znalazłeś kartkę z wskazówką!");
+      } else {
+        showDialog("Nieprawidłowy kod do sejfu!", 2000);
+      }
+    };
+
+    showDialog(safeContent, 0);
+  }
+
+  showTVScreen() {
+    // Tylko zmień tło, bez popup
+    gameState.tvScreenOn = true;
+    hideDialog(); // Zamknij menu TV
+  }
+  showSuitcasePopup() {
+    const suitcaseContent = `
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;">
+      <button onclick="hideDialog()" style="position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center;">×</button>
+      
+      <img src="https://i.imgur.com/gT3o9yo.png" style="max-width: 90vw; max-height: 70vh; display: block;" alt="Walizka">
+      <div style="text-align: center; margin-top: 15px;">
+        <button onclick="window.takeSuitcase()" style="padding: 10px 20px; background: #4a5568; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px;">WEŹ WALIZKĘ</button>
+      </div>
+    </div>
+  `;
+
+    window.takeSuitcase = () => {
+      addItem("Walizka");
+      hideDialog();
+      showDialog("Znalazłeś starą walizkę! Dodana do ekwipunku.");
+    };
+
+    showDialog(suitcaseContent, 0);
+  }
+  showTVCodePopup() {
+    const codePopup = `
+      <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: rgba(0,0,0,0.9); padding: 20px; border-radius: 10px; border: 2px solid #555;">
+        <button onclick="hideDialog()" style="position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center;">×</button>
+        
+        <div style="text-align: center; color: #fff; font-size: 18px; padding: 15px;">
+          <strong>Nr seryjny: I-2 II-1 III-8 IV-6 V-5</strong>
+        </div>
+      </div>
+    `;
+    showDialog(codePopup, 0);
+  }
 }
+
 class EndingScene extends Scene {
   constructor() {
     super();
@@ -2535,16 +3012,25 @@ class EndingScene extends Scene {
         hasBone: false,
         boneVisible: false,
         gaveBone: false,
-        gotInfo: false,
-        gotCode: false,
+        gotInfoFromKowalski: false,
+        askedAboutWindows: false,
         wellOpened: false,
         hasID: false,
+        hasSmallKey: false,
         gotLetter: false,
+        askedAboutIntercomCode: false,
+        readLetter: false,
         canEnter: false,
         intercomUnlocked: false,
-        hasIntercomCode: false,
-        searchedWycieraczka: false, // NOWE
-        searchedStroller: false // NOWE
+        fuseBoxSolved: false,
+        searchedWycieraczka: false,
+        searchedStroller: false,
+        foundSafeCard: false,
+        safeOpened: false,
+        tvTurnedOn: false,
+        suitcaseFound: false,
+        tvScreenOn: false,
+        cabinetOpened: false
       };
       updateInventoryDisplay();
       this.alpha = 0;
@@ -2583,6 +3069,274 @@ class EndingScene extends Scene {
       );
     }
   }
+}
+function toggleFullscreenGlobal() {
+  try {
+    if (!document.fullscreenElement) {
+      // Wejdź w pełny ekran
+      const gameContainer =
+        document.querySelector(".game-container") || document.body;
+      if (gameContainer.requestFullscreen) {
+        gameContainer.requestFullscreen();
+      } else if (gameContainer.webkitRequestFullscreen) {
+        gameContainer.webkitRequestFullscreen();
+      } else if (gameContainer.msRequestFullscreen) {
+        gameContainer.msRequestFullscreen();
+      }
+      showDialog(
+        "Gra uruchomiona na pełnym ekranie! Naciśnij ESC aby wyjść.",
+        2000
+      );
+    } else {
+      // Wyjdź z pełnego ekranu
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+      showDialog("Wyszedłeś z pełnego ekranu.", 2000);
+    }
+  } catch (error) {
+    showDialog("Przeglądarka nie obsługuje pełnego ekranu.", 2000);
+    console.log("Fullscreen error:", error);
+  }
+}
+
+// Ukryj/pokaż ikonę w zależności od sceny
+function updateFullscreenIcon() {
+  const icon = document.getElementById("fullscreenIcon");
+  if (icon) {
+    // Ukryj w menu, pokaż w grze
+    icon.style.display = currentScene === "menu" ? "none" : "flex";
+  }
+}
+function showCreditsScreen() {
+  hideDialog();
+
+  const creditsContent = `
+    <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(20, 22, 34, 0.95); z-index: 10001; display: flex; align-items: center; justify-content: center; overflow-y: auto;">
+      <div style="background: #F5F1E8; color: #2C1810; padding: 40px; border-radius: 10px; border: 2px solid #D4C4A8; text-align: center; max-width: 600px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); margin: 20px;">
+        
+        <div style="font-size: 28px; margin-bottom: 10px; font-weight: bold; font-family: serif; color: #2C1810;">
+          Starzik: TheSzpil
+        </div>
+        <div style="font-size: 16px; margin-bottom: 20px; font-style: italic; color: #666;">
+          || wersja beta ||<br/>
+          Świętochłowice 2025
+        </div>
+        
+        <div style="width: 80%; height: 1px; background: #8B4513; margin: 20px auto;"></div>
+        
+        <div style="font-size: 16px; margin: 20px 0; line-height: 1.6; font-family: serif;">
+          Gra promocyjna escape roomu Familock w Świętochłowicach.<br/>
+          <strong>Zarezerwuj swoją grę na www.familock.pl</strong>
+        </div>
+        
+        <div style="width: 80%; height: 1px; background: #8B4513; margin: 20px auto;"></div>
+        
+        <div style="font-size: 14px; margin: 20px 0; line-height: 1.8; font-family: serif; text-align: left;">
+          <strong>Twórcy:</strong><br/>
+          Pomysł: Łukasz Dyłka<br/>
+          Grafika: Chat GPT<br/>
+          Kod: Claude.ai<br/>
+          Logika, pomysł zagadek: Łukasz Dyłka<br/>
+          Muzyka, dźwięki: Pixabay.com, Elevenlabs.com
+        </div>
+        
+        <div style="width: 80%; height: 1px; background: #8B4513; margin: 20px auto;"></div>
+        
+        <div style="font-size: 14px; margin: 20px 0; line-height: 1.6; font-family: serif;">
+          Gra może się rozwijać i w każdym momencie może wyjść aktualizacja o nowe lokacje i zagadki.<br/><br/>
+          <strong>Wesprzyj tworzenie gry:</strong><br/>
+          <a href="https://buycoffee.to/wspolnotafamilocka" target="_blank" style="color: #8b4513; text-decoration: underline;">https://buycoffee.to/wspolnotafamilocka</a>
+        </div>
+        
+        <div style="width: 80%; height: 1px; background: #8B4513; margin: 20px auto;"></div>
+        
+        <div style="margin-top: 30px;">
+          <button onclick="showDiscountCode()" style="padding: 15px 25px; background: #d4af37; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; margin: 10px; font-family: serif;">
+            ODBIERZ KOD ZNIŻKOWY
+          </button><br/>
+          <button onclick="changeScene('menu'); hideDialog()" style="padding: 10px 20px; background: #8b4513; color: #fff; border: 2px solid #5d2f0a; border-radius: 5px; cursor: pointer; font-size: 14px; margin: 5px; font-family: serif;">
+            MENU GŁÓWNE
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  showDialog(creditsContent, 0);
+}
+// System kodów rabatowych - jeden kod na komputer
+const discountCodes = [
+  "STARZIK-A1B2",
+  "STARZIK-C3D4",
+  "STARZIK-E5F6",
+  "STARZIK-G7H8",
+  "STARZIK-I9J0",
+  "STARZIK-K1L2",
+  "STARZIK-M3N4",
+  "STARZIK-O5P6",
+  "STARZIK-Q7R8",
+  "STARZIK-S9T0",
+  "STARZIK-U1V2",
+  "STARZIK-W3X4",
+  "STARZIK-Y5Z6",
+  "STARZIK-A7B8",
+  "STARZIK-C9D0"
+];
+// DODAJ TĘ FUNKCJĘ TUTAJ NA POCZĄTKU
+function checkCodesStatus() {
+  const usedCodes = JSON.parse(
+    localStorage.getItem("starzikUsedCodes") || "{}"
+  );
+  const usedCount = Object.keys(usedCodes).length;
+  const availableCount = discountCodes.length - usedCount;
+
+  console.log(`Kody wykorzystane: ${usedCount}/${discountCodes.length}`);
+  console.log(`Kody dostępne: ${availableCount}`);
+  console.log("Szczegóły:", usedCodes);
+
+  return {
+    total: discountCodes.length,
+    used: usedCount,
+    available: availableCount,
+    details: usedCodes
+  };
+}
+
+// DODAJ TAKŻE RESET NA POCZĄTKU
+function resetDiscountCodes() {
+  localStorage.removeItem("starzikUsedCodes");
+  console.log("Kody rabatowe zostały zresetowane");
+}
+function getComputerFingerprint() {
+  // Generuj unikalny "odcisk palca" komputera
+  const screen = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const language = navigator.language;
+  const platform = navigator.platform;
+  const userAgent = navigator.userAgent.slice(0, 50); // Skrócona wersja
+
+  const fingerprint = `${screen}-${timezone}-${language}-${platform}-${userAgent}`;
+
+  // Stwórz hash z odcisku palca
+  let hash = 0;
+  for (let i = 0; i < fingerprint.length; i++) {
+    const char = fingerprint.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Konwertuj na 32-bit integer
+  }
+
+  return `comp_${Math.abs(hash)}`;
+}
+
+function getUsedCodes() {
+  return JSON.parse(localStorage.getItem("starzikUsedCodes") || "{}");
+}
+
+function markCodeAsUsed(computerId, code) {
+  const usedCodes = getUsedCodes();
+  usedCodes[computerId] = {
+    code: code,
+    timestamp: new Date().toISOString(),
+    used: true
+  };
+  localStorage.setItem("starzikUsedCodes", JSON.stringify(usedCodes));
+}
+
+function getCodeForComputer(computerId) {
+  const usedCodes = getUsedCodes();
+
+  // Sprawdź czy ten komputer już ma przypisany kod
+  if (usedCodes[computerId]) {
+    return usedCodes[computerId].code;
+  }
+
+  // Znajdź pierwszy niewykorzystany kod
+  const usedCodesList = Object.values(usedCodes).map((entry) => entry.code);
+  const availableCode = discountCodes.find(
+    (code) => !usedCodesList.includes(code)
+  );
+
+  if (availableCode) {
+    markCodeAsUsed(computerId, availableCode);
+    return availableCode;
+  }
+
+  return null; // Brak dostępnych kodów
+}
+
+function showDiscountCode() {
+  const computerId = getComputerFingerprint();
+  const code = getCodeForComputer(computerId);
+
+  if (code) {
+    const codeContent = `
+      <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(20, 22, 34, 0.95); z-index: 10002; display: flex; align-items: center; justify-content: center;">
+        <div style="background: #F5F1E8; color: #2C1810; padding: 40px; border-radius: 10px; border: 3px solid #d4af37; text-align: center; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+          
+          <div style="font-size: 24px; margin-bottom: 20px; font-weight: bold; font-family: serif; color: #2C1810;">
+            Super, że dotarłeś do tego miejsca!
+          </div>
+          
+          <div style="font-size: 16px; margin: 20px 0; line-height: 1.6; font-family: serif;">
+            Oto kod na <strong>20 zł zniżki</strong> do escape roomu Starzik.<br/>
+            Wpisz go podczas rezerwacji.
+          </div>
+          
+          <div style="background: #fff; border: 3px dashed #d4af37; padding: 20px; margin: 20px 0; border-radius: 10px;">
+            <div style="font-size: 28px; font-weight: bold; color: #8b4513; font-family: monospace;">
+              ${code}
+            </div>
+          </div>
+          
+          <div style="font-size: 14px; margin: 10px 0; color: #666; font-style: italic;">
+            Ten kod jest przypisany do tego komputera
+          </div>
+          
+          <div style="font-size: 18px; margin: 20px 0; font-weight: bold; color: #8b4513; font-family: serif;">
+            Dzięki!
+          </div>
+          
+          <button onclick="changeScene('menu'); hideDialog()" style="padding: 15px 25px; background: #8b4513; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; margin: 10px; font-family: serif;">
+            ZAMKNIJ
+          </button>
+        </div>
+      </div>
+    `;
+    showDialog(codeContent, 0);
+  } else {
+    showDialog(
+      "Niestety, wszystkie kody zostały już wykorzystane. Spróbuj później!",
+      3000
+    );
+  }
+}
+
+// Funkcja resetowania kodów (dla administratora)
+function resetDiscountCodes() {
+  localStorage.removeItem("starzikUsedCodes");
+  console.log("Kody rabatowe zostały zresetowane");
+}
+
+// Funkcja do sprawdzenia stanu kodów (dla administratora)
+function checkCodesStatus() {
+  const usedCodes = getUsedCodes();
+  const usedCount = Object.keys(usedCodes).length;
+  const availableCount = discountCodes.length - usedCount;
+
+  console.log(`Kody wykorzystane: ${usedCount}/${discountCodes.length}`);
+  console.log(`Kody dostępne: ${availableCount}`);
+  console.log("Szczegóły:", usedCodes);
+
+  return {
+    total: discountCodes.length,
+    used: usedCount,
+    available: availableCount,
+    details: usedCodes
+  };
 }
 function gameLoop() {
   try {
